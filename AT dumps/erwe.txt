@@ -1,0 +1,57 @@
+ATE0
+ATE0
+OK
+ATV0=0
+
+ERROR
+ATV0
+0
+AT+CPIN?
++CPIN: READY
+0
+AT+CREG?
++CREG: 0,1
+0
+AT+COPS?
++COPS: 0,0,"MegaFon"
+0
+AT+CSQ
++CSQ: 9,0
+0
+AT+CGATT = 1
+0
+AT+CGDCONT=1,"IP","internet"
+0
+AT+CIICR
+4
+AT+CIPSTATUS
+0
+
+STATE: IP INITIAL
+AT+CSTT="internet"
+0
+AT+CIICR
+0
+AT+CIICR
+4
+AT+CIFSR
+
+10.242.41.36
+AT+CIPHEAD=1
+0
+AT+CDNSORIP=1 
+4
+AT+CIPSTART="TCP","www.google.com","80"
+0
+
+CONNECT OK
+AT+CIPSEND
+
+> GET / HTTP/1.1 (CNTL + M and CNTL + J) # Send data - this example is an HTTP request for the google
+Host: http://www.google.com (CNTL + M and CNTL + J)
+Connection: Keep-Alive (CNTL + M and CNTL + J )
+Accept: */* (CNTL + M and CNTL + J )
+Accept-Language: en-us (CNTL + M and CNTL + J)
+
+
+SEND OK
