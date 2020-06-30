@@ -1,85 +1,38 @@
-/*
- * modem.c
- *
- *  Created on: 4 февр. 2018 г.
- *      Author: Администратор
- */
-
 #include "stm32f1xx.h"
-#include <stdbool.h>
-#include <string.h>
 #include "uart2.h"
-#include "delay.h"
-#include "errors.h"
 #include "modem.h"
+#include "systick.h"
+#include "gpio.h"
+#include "string.h"
 
-#define pin "1234"
+#define pin "0000"
 #define pincommand "AT+CPIN="pin"\r\n"
 
 int8_t geterrorcode(char* data);
 
-extern uint32_t tick;
-
-bool readyflag = false;
+//bool readyflag = false;
 uint8_t cpin = 0;
-bool callreadyflag = false;
-bool smsreadyflag = false;
+bool callReadyFlag = false;
+bool smsReadyFlag = false;
 
-//обработчик команд от модема
-bool sms_ready(char* packet)
+void modem_init()
 {
-	//завершение инициализации ОС модема - работает только при заданной скорости обмена
-	if(!readyflag && !strcmp(packet, "RDY\r\n"))
-	{
-		readyflag = true;
-		return true;
-	}
-	//регистрация завершена - работает только при заданной скорости обмена
-	else if(!cpin && !strcmp(packet, "+CPIN: READY\r\n"))
-	{
-		cpin = 1;
-		return true;
-	}
-	//сим-карта треубет пин - работает только при заданной скорости обмена
-	else if(!cpin && !strcmp(packet, "+CPIN: SIM PIN\r\n"))
-	{
-		cpin = 2;
-		return true;
-	}
-	//модем готов принимать вызовы
-	else if(!callreadyflag && !strcmp(packet, "Call Ready\r\n"))
-	{
-		callreadyflag = true;
-		return true;
-	}
-	//модем готов принимать СМС
-	else if(!smsreadyflag && !strcmp(packet, "SMS Ready\r\n"))
-	{
-		smsreadyflag = true;
-		return true;
-	}
-	else return false;
-}
-
-//инициализация модема
-errorcode modem_init()
-{
-	char* result;
-
-	//reset
-	delay(100*1000);
-	GPIOC->BSRR = 0x00008000;
+	while(!IsModemPowerUp());
+	delay(200);
 
 	//power up
-	delay(1200*1000);
-	GPIOB->BSRR = 0x00000004;
+	ModemPowerUp();
+	delay(1200);
+	ModemPowerUpOff();
 
-	//-----команды, обрабатываемые нативно-----
+	//reset
+	ModemReset();
+	delay(200);
+	ModemResetOff();
 
-	result = receive_uart2(3,2200); //RDY или таймаут
+	char* result = receive_uart2(3,2200); //RDY
 
-	//отключение эха
-	//У SIM800 эхо заканчивается /r, у SIM900 /r/n
+	//PING
 	uint8_t count = 3;
 	do
 	{
@@ -88,9 +41,9 @@ errorcode modem_init()
 	}
 	while(!result && --count);
 	if(!count)
-		return ERR_NOMODEM;
+		return;
 
-	//ошибки цифрой
+	//Short responce
 	count = 3;
 	do
 	{
@@ -99,9 +52,9 @@ errorcode modem_init()
 	}
 	while(!result && --count);
 	if(!count)
-		return ERR_NOMODEM;
+		return;
 
-	//скорость порта - без этого не будет RDY - нужно сохранять
+	//Uart speed
 /*	do
 	{
 		send_uart2("AT+IPR=57600\r\n");
@@ -109,7 +62,7 @@ errorcode modem_init()
 	}
 	while(!result);*/
 
-	//программный контроль передачи
+	//use RTS CTS
 	do
 	{
 		send_uart2("AT+IFC=2,2\r\n");
@@ -117,63 +70,103 @@ errorcode modem_init()
 	}
 	while(!result);
 
-	//-----дальше команды, обрабатываемые на подсистеме команд-----
-
+	//---Registration---
 	USART2->SR &= ~USART_SR_RXNE;
 	NVIC_EnableIRQ(USART2_IRQn);
-	delay(100*1000);
-
-	//cpin
 	commanderror error;
-	char answerbuffer[64];
-	do
+
+	LedOrangeOff();
+
+	delay(200);
+	error = sendcommand("AT+CPIN?\r\n", 5000);
+
+	while(!smsReadyFlag)
 	{
-		error = sendcommandwithanswer("AT+CPIN?\r\n", answerbuffer, sizeof(answerbuffer), 5000);
-		if(error == C_OK)
-			break;
-		delay(1000*1000);
-	}
-	while(1);
-	if(!strcmp(answerbuffer, "+CPIN: SIM PIN\r\n"))
-	{
-		//отправка пин кода
-		sendcommand(pincommand, 5000);
+		if(cpin == 1)
+		{
+			error = sendcommand("AT+CPIN?\r\n", 5000);
+			cpin = 0;
+		}
+
+		if(cpin == 2)
+		{
+			error = sendcommand(pincommand, 5000);
+			cpin = 0;
+		}
 	}
 
-	//ожидание регистрации в сети
-	while(!smsreadyflag);
-
-	//инициализация DTMF декодера
+	//Enable DTMF
 	error = sendcommand("AT+DDET=1,0,0\r\n", 5000);
 	if(error != C_OK && error != C_NOCODE)
-		return ERR_DTMFINIT;
+		return;
 
-	//смс в текстовом виде
+	//Select SMS format
 	error = sendcommand("AT+CMGF=1\r\n", 5000);
 
-	//запрет широковещательных сообщений
+	//Broadcast SMS are not accepted
 	error = sendcommand("AT+CSCB=1\r\n", 5000);
 
-	return 0;
+	LedRedOff();
+
+	return;
 }
 
-//отправка команды на модем
+//Network registration handler
+bool sms_ready(char* packet)
+{
+	if(!strcmp(packet, "RDY\r\n"))
+	{
+		//readyflag = true;
+		return true;
+	}
+	//sim ready
+	else if(!strcmp(packet, "+CPIN: READY\r\n"))
+	{
+		return true;
+	}
+	//sim not ready
+	else if(!strcmp(packet, "+CPIN: NOT READY\r\n"))
+	{
+		cpin = 1;
+		return true;
+	}
+	//sim need pin
+	else if(!strcmp(packet, "+CPIN: SIM PIN\r\n"))
+	{
+		cpin = 2;
+		sendcommand(pincommand, 5000);
+		return true;
+	}
+	else if(!strcmp(packet, "Call Ready\r\n"))
+	{
+		callReadyFlag = true;
+		return true;
+	}
+	else if(!strcmp(packet, "SMS Ready\r\n"))
+	{
+		smsReadyFlag = true;
+		return true;
+	}
+	else return false;
+}
+
+//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 commanderror sendcommand(char* command, uint32_t timeout)
 {
 	volatile uint32_t timestamp;
 	char* result;
 
-	//---отправка---
+	//---пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ---
 	modem_sendpacket(command, 1);
 
-	//---ответ---
+	//---пїЅпїЅпїЅпїЅпїЅ---
 	do
 	{
-		timestamp = tick;
+		timestamp = getSystime();
 		do
 		{
 			result = modem_trygetpacket();
-		} while (!result && ((tick - timestamp) < timeout));
+		} while (!result && !checkDelay(timestamp, timeout));
 
 		if (!result)
 		{
@@ -185,10 +178,10 @@ commanderror sendcommand(char* command, uint32_t timeout)
 			int8_t errorcode = geterrorcode(result);
 
 			if (errorcode == -1)
-				//пришел не код ошибки, а какая-то фигня - ждем дальше
+				//пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅпїЅпїЅпїЅ-пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 				modem_ack(false);
 			else if (errorcode == 2 || errorcode == 3)
-				//это коды звонилки, оставить ей на обработку - ждем дальше
+				//пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 				modem_ack(false);
 			else
 			{
@@ -199,26 +192,26 @@ commanderror sendcommand(char* command, uint32_t timeout)
 	} while (1);
 }
 
-//отправка команды на модем с текстовым ответом
+//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 commanderror sendcommandwithanswer(char* command, char* buffer, int buffersize,
 		uint32_t timeout)
 {
 	volatile uint32_t timestamp;
 	char* result;
 
-	//---отправка---
+	//---пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ---
 	modem_sendpacket(command, 2);
 
-	//---ответ---
+	//---пїЅпїЅпїЅпїЅпїЅ---
 	do
 	{
-		timestamp = tick;
+		timestamp = getSystime();
 
 		do
 		{
 			result = modem_trygetpacket();
 		}
-		while (!result && ((tick - timestamp) < timeout));
+		while (!result && !checkDelay(timestamp, timeout));
 
 		if (!result)
 		{
@@ -229,9 +222,9 @@ commanderror sendcommandwithanswer(char* command, char* buffer, int buffersize,
 		int8_t errorcode = geterrorcode(result);
 		if (errorcode != -1)
 		{
-			//пришел код ошибки, а не ответ
+			//пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 			if (errorcode == 2 || errorcode == 3)
-				//это коды звонилки, оставить ей на обработку
+				//пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 				modem_ack(false);
 			else
 			{
@@ -241,21 +234,21 @@ commanderror sendcommandwithanswer(char* command, char* buffer, int buffersize,
 			}
 		}
 
-		//TODO: добавить проверку, что пришел именно ответ на эту команду
-		stpncpy(buffer, result, buffersize - 1); //копируем ответ себе
-		buffer[buffersize - 1] = 0; //признак конца строки на  всякий случай
+		//TODO: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+		stpncpy(buffer, result, buffersize - 1); //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
+		buffer[buffersize - 1] = 0; //пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ  пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
 		modem_ack(true);
-		//---код ошибки---
+		//---пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ---
 		do
 		{
-			timestamp = tick;
+			timestamp = getSystime();
 
 			do
 			{
 				result = modem_trygetpacket();
 			}
-			while (!result && ((tick - timestamp) < timeout));
+			while (!result && !checkDelay(timestamp, timeout));
 
 			if (!result)
 			{
@@ -266,10 +259,10 @@ commanderror sendcommandwithanswer(char* command, char* buffer, int buffersize,
 			errorcode = geterrorcode(result);
 
 			if (errorcode == -1)
-				//пришел не код ошибки, а какая-то фигня - ждем дальше
+				//пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅпїЅпїЅпїЅ-пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 				modem_ack(false);
 			else if (errorcode == 2 || errorcode == 3)
-				//это коды звонилки, оставить ей на обработку - ждем дальше
+				//пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 				modem_ack(false);
 			else
 			{
@@ -287,18 +280,18 @@ commanderror sendcommandwith2answer(char* command, char* buffer, int buffersize,
 	volatile uint32_t timestamp;
 	char* result;
 
-	//---отправка---
+	//---пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ---
 	modem_sendpacket(command, 3);
 
-	//---ответ 1---
+	//---пїЅпїЅпїЅпїЅпїЅ 1---
 	do
 	{
-		timestamp = tick;
+		timestamp = getSystime();
 
 		do
 		{
 			result = modem_trygetpacket();
-		} while (!result && ((tick - timestamp) < timeout));
+		} while (!result && !checkDelay(timestamp, timeout));
 
 		if (!result)
 		{
@@ -309,9 +302,9 @@ commanderror sendcommandwith2answer(char* command, char* buffer, int buffersize,
 		int8_t errorcode = geterrorcode(result);
 		if (errorcode != -1)
 		{
-			//пришел код ошибки, а не ответ
+			//пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 			if (errorcode == 2 || errorcode == 3)
-				//это коды звонилки, оставить ей на обработку
+				//пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 				modem_ack(false);
 			else
 			{
@@ -321,20 +314,20 @@ commanderror sendcommandwith2answer(char* command, char* buffer, int buffersize,
 			}
 		}
 
-		//TODO: добавить проверку, что пришел именно ответ на эту команду
-		stpncpy(buffer, result, buffersize - 1); //копируем ответ себе
-		buffer[buffersize - 1] = 0; //признак конца строки на  всякий случай
+		//TODO: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+		stpncpy(buffer, result, buffersize - 1); //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
+		buffer[buffersize - 1] = 0; //пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ  пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
 		modem_ack(true);
-		//---ответ2---
+		//---пїЅпїЅпїЅпїЅпїЅ2---
 		do
 		{
-			timestamp = tick;
+			timestamp = getSystime();
 
 			do
 			{
 				result = modem_trygetpacket();
-			} while (!result && ((tick - timestamp) < timeout));
+			} while (!result && !checkDelay(timestamp, timeout));
 
 			if (!result)
 			{
@@ -345,9 +338,9 @@ commanderror sendcommandwith2answer(char* command, char* buffer, int buffersize,
 			int8_t errorcode = geterrorcode(result);
 			if (errorcode != -1)
 			{
-				//пришел код ошибки, а не ответ
+				//пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 				if (errorcode == 2 || errorcode == 3)
-					//это коды звонилки, оставить ей на обработку
+					//пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 					modem_ack(false);
 				else
 				{
@@ -357,21 +350,21 @@ commanderror sendcommandwith2answer(char* command, char* buffer, int buffersize,
 				}
 			}
 
-			//TODO: добавить проверку, что пришел именно ответ на эту команду
-			stpncpy(buffer2, result, buffer2size - 1); //копируем ответ себе
-			buffer2[buffer2size - 1] = 0; //признак конца строки на  всякий случай
+			//TODO: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+			stpncpy(buffer2, result, buffer2size - 1); //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
+			buffer2[buffer2size - 1] = 0; //пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ  пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
 			modem_ack(true);
 
-			//---код ошибки---
+			//---пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ---
 			do
 			{
-				timestamp = tick;
+				timestamp = getSystime();
 
 				do
 				{
 					result = modem_trygetpacket();
-				} while (!result && ((tick - timestamp) < timeout));
+				} while (!result && !checkDelay(timestamp, timeout));
 
 				if (!result)
 				{
@@ -382,10 +375,10 @@ commanderror sendcommandwith2answer(char* command, char* buffer, int buffersize,
 				errorcode = geterrorcode(result);
 
 				if (errorcode == -1)
-					//пришел не код ошибки, а какая-то фигня - ждем дальше
+					//пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅпїЅпїЅпїЅ-пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 					modem_ack(false);
 				else if (errorcode == 2 || errorcode == 3)
-					//это коды звонилки, оставить ей на обработку - ждем дальше
+					//пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 					modem_ack(false);
 				else
 				{
@@ -399,7 +392,7 @@ commanderror sendcommandwith2answer(char* command, char* buffer, int buffersize,
 }
 
 
-//преобразует ответ с кодом в цифру
+//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ
 int8_t geterrorcode(char* data)
 {
 	if(*data >='0' && *data <= '9' && *(data+1)== 0x0D && *(data+2)== 0x0A)

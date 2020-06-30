@@ -6,9 +6,6 @@
  */
 
 #include "stm32f1xx.h"
-#include "errors.h"
-
-extern errorcode error;
 
 void __attribute__ ((weak)) _init(void)
 {
@@ -26,11 +23,11 @@ void SystemInit(void)
 	//portb
 	GPIOB->CRH = 0x00000033;
 	GPIOB->CRL = 0x38003700;
-	GPIOB->ODR = 0x00000380;
+	GPIOB->ODR = 0x00000384;
 	//portc
 	GPIOC->CRH = 0x70000000;
 	GPIOC->CRL = 0x00000000;
-	GPIOC->ODR = 0x00000000;
+	GPIOC->ODR = 0x00008000;
 	//UART2
 	USART2->BRR = 625;
 	USART2->CR2 = 0x00000000;
@@ -42,12 +39,12 @@ void SystemInit(void)
 	SysTick->VAL = 72000000UL / 1000 - 1;
 	SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk | SysTick_CTRL_ENABLE_Msk;
 
-	errorcode error = SystemCoreClockUpdate();
+	SystemCoreClockUpdate();
 
 	__enable_irq();
 }
 
-errorcode SystemCoreClockUpdate()
+void SystemCoreClockUpdate()
 {
 	//�������� ������� �����
 	RCC->CR = RCC_CR_HSEON;
@@ -56,7 +53,7 @@ errorcode SystemCoreClockUpdate()
 	{
 	}
 	if (!(RCC->CR & RCC_CR_HSERDY))
-		return ERR_CRYSTAL;
+		return;
 
 	FLASH->ACR = FLASH_ACR_PRFTBE | FLASH_ACR_LATENCY_1; //�������� ������� ��� FLASH ������
 	RCC->CFGR = RCC_CFGR_PLLMULL9 | RCC_CFGR_PLLSRC
@@ -69,7 +66,7 @@ errorcode SystemCoreClockUpdate()
 	{
 	}
 	if (!(RCC->CR & RCC_CR_PLLRDY))
-		return ERR_PLL;
+		return;
 
 	RCC->CFGR = RCC->CFGR | RCC_CFGR_SW_PLL; //������������� �� pll
 	while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) //���� ������������ �� pll

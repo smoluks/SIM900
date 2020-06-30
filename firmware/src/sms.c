@@ -27,7 +27,7 @@ bool smscommands(char* packet)
 	return false;
 }
 
-void processsms()
+void processSms()
 {
 	if(sms)
 	{

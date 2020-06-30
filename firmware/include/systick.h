@@ -7,5 +7,9 @@
 
 #pragma once
 
-uint32_t getSystime(void);
+#include <stdint.h>
+#include <stdbool.h>
+
+uint32_t getSystime();
 bool checkDelay(uint32_t timestamp, uint32_t delay);
+void delay(uint32_t delay);
