@@ -86,7 +86,7 @@ void uart2_custompackethandlers()
 	if (!sms_ready(rxbuffer))
 		if (!callcommands(rxbuffer))
 			if (!mediacommands(rxbuffer))
-				smscommands(rxbuffer);
+				smsHandler(rxbuffer);
 }
 
 //���������� �������� �����
@@ -183,7 +183,11 @@ char* receive_uart2(int count, int timeout)
 
 	while(count--)
 	{
-		while(!(USART2->SR & USART_SR_RXNE) && !checkDelay(timestamp, timeout));
+		while(!(USART2->SR & USART_SR_RXNE) && !checkDelay(timestamp, timeout))
+		{
+			WDT_RESET();
+		}
+
 		if(USART2->SR & USART_SR_RXNE)
 			*pointer++ = USART2->DR;
 		else

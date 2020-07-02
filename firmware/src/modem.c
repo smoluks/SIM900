@@ -32,12 +32,15 @@ bool modem_init()
 	ModemResetOff();
 
 	send_uart2("AT\r\n");
+	delay(500);
 
 	//PING
 	uint8_t count = 3;
 	char *result;
 	do
 	{
+		WDT_RESET();
+
 		send_uart2("ATE0\r\n");
 		result = receive_uart2(11, 5000);
 	} while (!result && --count);
@@ -48,6 +51,8 @@ bool modem_init()
 	count = 3;
 	do
 	{
+		WDT_RESET();
+
 		send_uart2("ATV0\r\n");
 		result = receive_uart2(3, 1500);
 	} while (!result && --count);
@@ -66,6 +71,8 @@ bool modem_init()
 	count = 3;
 	do
 	{
+		WDT_RESET();
+
 		send_uart2("AT+IFC=2,2\r\n");
 		result = receive_uart2(3, 1500);
 	} while (!result && --count);
@@ -85,6 +92,8 @@ bool modem_init()
 
 	while (!callReadyFlag || !smsReadyFlag)
 	{
+		WDT_RESET();
+
 		if (cpin == 1)
 		{
 			//error = sendcommand("AT+CPIN?\r\n", 5000);
@@ -106,13 +115,18 @@ bool modem_init()
 	if (error != C_OK && error != C_NOCODE)
 		return false;
 
+	//Broadcast SMS are not accepted
+	error = sendcommand("AT+CSCB=1\r\n", 5000);
+	if (error)
+		return false;
+
 	//Select SMS format
 	error = sendcommand("AT+CMGF=1\r\n", 5000);
 	if (error)
 		return false;
 
-	//Broadcast SMS are not accepted
-	error = sendcommand("AT+CSCB=1\r\n", 5000);
+	//delete all sms
+	error = sendcommand("AT+CMGDA=\"DEL ALL\"\r\n", 5000);
 	if (error)
 		return false;
 
@@ -173,6 +187,8 @@ commanderror sendcommand(char *command, uint32_t timeout)
 	//---�����---
 	do
 	{
+		WDT_RESET();
+
 		timestamp = getSystime();
 		do
 		{

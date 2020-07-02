@@ -102,7 +102,7 @@ void processLogic() {
 		OutputDisable();
 		AllLedOff();
 
-		sendcommand(callCommand, 20000);
+		sendcommand(getCallCommand(), 20000);
 		delay(15000);
 		sendcommand(stopCallCommand, 5000);
 

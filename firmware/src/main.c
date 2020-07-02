@@ -6,10 +6,14 @@
 #include "atCommands.h"
 #include "logic.h"
 #include "media.h"
+#include "config.h"
+#include "systick.h"
 
 int main(void)
 {
 	LedGreenOff();
+
+	readConfig();
 
 	bool isInit = false;
 	do
@@ -19,6 +23,8 @@ int main(void)
 
 	while(1)
 	{
+		WDT_RESET();
+
 		process_call();
 		processSms();
 		processLogic();

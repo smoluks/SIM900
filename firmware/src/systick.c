@@ -28,5 +28,7 @@ void delay(uint32_t delay)
 {
 	volatile uint32_t timestamp = systime;
 
-	while(!checkDelay(timestamp, delay));
+	while(!checkDelay(timestamp, delay)){
+		WDT_RESET();
+	}
 }
