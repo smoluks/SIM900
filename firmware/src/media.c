@@ -1,11 +1,10 @@
 /*
  * media.c
  *
- *	работа с аудиофайлами в модеме
- *  Created on: 4 февр. 2018 г.
- *      Author: Администратор
+ *	пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+ *  Created on: 4 пїЅпїЅпїЅпїЅ. 2018 пїЅ.
+ *      Author: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
  */
-
 
 #include <string.h>
 #include <stdbool.h>
@@ -14,42 +13,89 @@
 #include "modem.h"
 #include "media.h"
 
-bool isplaying = false; //идет ли воспроизведение файла
+void process_next();
+void playNext();
 
-//обработчик команд от модема
-bool mediacommands(char* packet)
+bool isPlaying = false;
+bool end = false;
+
+bool mediacommands(char *packet)
 {
-	//конец файла
-	if(strpartcmp(packet, "+CREC: 0"))
+	if (strpartcmp(packet, "+CREC: 0"))
 	{
-		isplaying = false;
+		end = true;
 		return true;
 	}
 	return false;
 }
 
-//воспроизведение файла
-void start_play(char* filename, bool repeat)
+void processMedia()
 {
-	stop_play();
-
-	char play[64];
-	if(!repeat)
-		snprintf(play, sizeof(play), "%s%s%s", "AT+CREC=4,\"C:\\User\\", filename, "\",1,80\r\n");
-	else
-		snprintf(play, sizeof(play), "%s%s%s", "AT+CREC=4,\"C:\\User\\", filename, "\",1,80,1\r\n");
-	if(!sendcommand(play, 5000))
-		isplaying = true;
+	if(end)
+	{
+		process_next();
+		end = false;
+	}
 }
 
-//стоп
-void stop_play()
+char *filesToPlay[16];
+uint8_t filesCount;
+
+void playSome(char* files[], uint8_t count)
+{
+	stop();
+
+	if (filesCount <= 16)
+		filesCount = count;
+	else
+		filesCount = 16;
+
+	for (uint8_t i = 0; i < filesCount; i++)
+	{
+		filesToPlay[i] = files[i];
+	}
+
+	playNext();
+}
+
+void play(char *filename)
+{
+	stop();
+
+	filesToPlay[0] = filename;
+	filesCount = 1;
+
+	playNext();
+}
+
+void stop()
 {
 	char buffer[11];
-	if(isplaying)
+	if (isPlaying)
 	{
 		sendcommandwithanswer("AT+CREC=5\r\n", buffer, 11, 5000);
-		isplaying = false;
+		isPlaying = false;
 	}
+}
+
+void process_next()
+{
+	if(filesCount)
+		playNext();
+	else
+		isPlaying = false;
+}
+
+void playNext()
+{
+	char* filename = filesToPlay[--filesCount];
+
+	char play[64];
+	snprintf(play, sizeof(play), "%s%s%s", "AT+CREC=4,\"C:\\User\\", filename, "\",1,80\r\n");
+
+	if (!sendcommand(play, 5000))
+		isPlaying = true;
+	else
+		process_next();
 }
 

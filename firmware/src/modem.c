@@ -8,16 +8,17 @@
 #define pin "0000"
 #define pincommand "AT+CPIN="pin"\r\n"
 
-int8_t geterrorcode(char* data);
+int8_t geterrorcode(char *data);
 
 //bool readyflag = false;
 uint8_t cpin = 0;
 bool callReadyFlag = false;
 bool smsReadyFlag = false;
 
-void modem_init()
+bool modem_init()
 {
-	while(!IsModemPowerUp());
+	while (!IsModemPowerUp())
+		;
 	delay(200);
 
 	//power up
@@ -30,18 +31,18 @@ void modem_init()
 	delay(200);
 	ModemResetOff();
 
-	char* result = receive_uart2(3,2200); //RDY
+	send_uart2("AT\r\n");
 
 	//PING
 	uint8_t count = 3;
+	char *result;
 	do
 	{
-		send_uart2( "ATE0\r\n");
-		result = receive_uart2(11,5000);
-	}
-	while(!result && --count);
-	if(!count)
-		return;
+		send_uart2("ATE0\r\n");
+		result = receive_uart2(11, 5000);
+	} while (!result && --count);
+	if (!count)
+		return false;
 
 	//Short responce
 	count = 3;
@@ -49,26 +50,27 @@ void modem_init()
 	{
 		send_uart2("ATV0\r\n");
 		result = receive_uart2(3, 1500);
-	}
-	while(!result && --count);
-	if(!count)
-		return;
+	} while (!result && --count);
+	if (!count)
+		return false;
 
 	//Uart speed
-/*	do
-	{
-		send_uart2("AT+IPR=57600\r\n");
-		result = receive_uart2(3, 1500);
-	}
-	while(!result);*/
+	/*	do
+	 {
+	 send_uart2("AT+IPR=57600\r\n");
+	 result = receive_uart2(3, 1500);
+	 }
+	 while(!result);*/
 
 	//use RTS CTS
+	count = 3;
 	do
 	{
 		send_uart2("AT+IFC=2,2\r\n");
 		result = receive_uart2(3, 1500);
-	}
-	while(!result);
+	} while (!result && --count);
+	if (!count)
+		return false;
 
 	//---Registration---
 	USART2->SR &= ~USART_SR_RXNE;
@@ -76,85 +78,94 @@ void modem_init()
 	commanderror error;
 
 	LedOrangeOff();
-
 	delay(200);
+
+	uint32_t timestamp = getSystime();
 	error = sendcommand("AT+CPIN?\r\n", 5000);
 
-	while(!smsReadyFlag)
+	while (!callReadyFlag || !smsReadyFlag)
 	{
-		if(cpin == 1)
+		if (cpin == 1)
 		{
-			error = sendcommand("AT+CPIN?\r\n", 5000);
+			//error = sendcommand("AT+CPIN?\r\n", 5000);
 			cpin = 0;
 		}
 
-		if(cpin == 2)
+		if (cpin == 2)
 		{
 			error = sendcommand(pincommand, 5000);
 			cpin = 0;
 		}
+
+		if(checkDelay(timestamp, 30000u))
+			return false;
 	}
 
 	//Enable DTMF
 	error = sendcommand("AT+DDET=1,0,0\r\n", 5000);
-	if(error != C_OK && error != C_NOCODE)
-		return;
+	if (error != C_OK && error != C_NOCODE)
+		return false;
 
 	//Select SMS format
 	error = sendcommand("AT+CMGF=1\r\n", 5000);
+	if (error)
+		return false;
 
 	//Broadcast SMS are not accepted
 	error = sendcommand("AT+CSCB=1\r\n", 5000);
+	if (error)
+		return false;
 
 	LedRedOff();
 
-	return;
+	return true;
 }
 
 //Network registration handler
-bool sms_ready(char* packet)
+bool sms_ready(char *packet)
 {
-	if(!strcmp(packet, "RDY\r\n"))
+	if (!strcmp(packet, "RDY\r\n"))
 	{
 		//readyflag = true;
 		return true;
 	}
 	//sim ready
-	else if(!strcmp(packet, "+CPIN: READY\r\n"))
+	else if (!strcmp(packet, "+CPIN: READY\r\n"))
 	{
 		return true;
 	}
 	//sim not ready
-	else if(!strcmp(packet, "+CPIN: NOT READY\r\n"))
+	else if (!strcmp(packet, "+CPIN: NOT READY\r\n"))
 	{
 		cpin = 1;
 		return true;
 	}
 	//sim need pin
-	else if(!strcmp(packet, "+CPIN: SIM PIN\r\n"))
+	else if (!strcmp(packet, "+CPIN: SIM PIN\r\n"))
 	{
 		cpin = 2;
 		sendcommand(pincommand, 5000);
 		return true;
 	}
-	else if(!strcmp(packet, "Call Ready\r\n"))
+	else if (!strcmp(packet, "Call Ready\r\n"))
 	{
 		callReadyFlag = true;
 		return true;
 	}
-	else if(!strcmp(packet, "SMS Ready\r\n"))
+	else if (!strcmp(packet, "SMS Ready\r\n"))
 	{
 		smsReadyFlag = true;
 		return true;
 	}
-	else return false;
+	else
+		return false;
 }
 
 //�������� ������� �� �����
-commanderror sendcommand(char* command, uint32_t timeout)
+commanderror sendcommand(char *command, uint32_t timeout)
 {
 	volatile uint32_t timestamp;
-	char* result;
+	char *result;
 
 	//---��������---
 	modem_sendpacket(command, 1);
@@ -193,11 +204,11 @@ commanderror sendcommand(char* command, uint32_t timeout)
 }
 
 //�������� ������� �� ����� � ��������� �������
-commanderror sendcommandwithanswer(char* command, char* buffer, int buffersize,
+commanderror sendcommandwithanswer(char *command, char *buffer, int buffersize,
 		uint32_t timeout)
 {
 	volatile uint32_t timestamp;
-	char* result;
+	char *result;
 
 	//---��������---
 	modem_sendpacket(command, 2);
@@ -210,8 +221,7 @@ commanderror sendcommandwithanswer(char* command, char* buffer, int buffersize,
 		do
 		{
 			result = modem_trygetpacket();
-		}
-		while (!result && !checkDelay(timestamp, timeout));
+		} while (!result && !checkDelay(timestamp, timeout));
 
 		if (!result)
 		{
@@ -247,8 +257,7 @@ commanderror sendcommandwithanswer(char* command, char* buffer, int buffersize,
 			do
 			{
 				result = modem_trygetpacket();
-			}
-			while (!result && !checkDelay(timestamp, timeout));
+			} while (!result && !checkDelay(timestamp, timeout));
 
 			if (!result)
 			{
@@ -274,11 +283,11 @@ commanderror sendcommandwithanswer(char* command, char* buffer, int buffersize,
 	} while (1);
 }
 
-commanderror sendcommandwith2answer(char* command, char* buffer, int buffersize,
-		char* buffer2, int buffer2size, uint32_t timeout)
+commanderror sendcommandwith2answer(char *command, char *buffer, int buffersize,
+		char *buffer2, int buffer2size, uint32_t timeout)
 {
 	volatile uint32_t timestamp;
-	char* result;
+	char *result;
 
 	//---��������---
 	modem_sendpacket(command, 3);
@@ -391,12 +400,12 @@ commanderror sendcommandwith2answer(char* command, char* buffer, int buffersize,
 	} while (1);
 }
 
-
 //����������� ����� � ����� � �����
-int8_t geterrorcode(char* data)
+int8_t geterrorcode(char *data)
 {
-	if(*data >='0' && *data <= '9' && *(data+1)== 0x0D && *(data+2)== 0x0A)
-		return *data-0x30;
+	if (*data >= '0' && *data <= '9' && *(data + 1) == 0x0D
+			&& *(data + 2) == 0x0A)
+		return *data - 0x30;
 	else
 		return -1;
 }

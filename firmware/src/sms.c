@@ -13,6 +13,8 @@
 #include "uart2.h"
 #include "atCommands.h"
 
+void sendstatussms();
+
 bool sms = false;
 char messagenumber[5];
 //���������� ������ �� ������

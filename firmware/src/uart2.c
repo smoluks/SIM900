@@ -9,7 +9,8 @@
 #include "call.h"
 #include "modem.h"
 #include "media.h"
-
+#include "sms.h"
+#include "systick.h"
 
 void uart2_rx(char data);
 void uart2_endpacket();

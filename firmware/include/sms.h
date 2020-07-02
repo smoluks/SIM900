@@ -7,4 +7,5 @@
 
 #pragma once
 
+bool smscommands(char* packet);
 void processSms();

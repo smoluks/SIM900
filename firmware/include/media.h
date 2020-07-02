@@ -1,5 +1,8 @@
 #pragma once
 
 bool mediacommands(char* packet);
-void start_play(char* filename, bool repeat);
-void stop_play();
+void processMedia();
+
+void play(char *filename);
+void playSome(char *files[], uint8_t count);
+void stop();
