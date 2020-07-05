@@ -133,8 +133,8 @@ void setphone(char sms[])
 	char *answer;
 	do
 	{
-		answer = receive_uart2(3, 2200);
-	} while (answer[2] != '>');
+		answer = receive_uart2(1, 5000);
+	} while (answer[0] != '>');
 
 	send_uart2("set master phone ");
 	send_uart2(phone);

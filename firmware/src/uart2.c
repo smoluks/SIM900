@@ -167,7 +167,9 @@ void send_uart2(char* data)
 		char c = *data++;
 		if(!c)
 			break;
-		while(!(USART2->SR & USART_SR_TXE));
+		while(!(USART2->SR & USART_SR_TXE)){
+			WDT_RESET();
+		}
 		USART2->DR = c;
 	}
 	while(1);
