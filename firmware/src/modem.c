@@ -187,12 +187,11 @@ commanderror sendcommand(char *command, uint32_t timeout)
 	//---�����---
 	do
 	{
-		WDT_RESET();
-
 		timestamp = getSystime();
 		do
 		{
 			result = modem_trygetpacket();
+			WDT_RESET();
 		} while (!result && !checkDelay(timestamp, timeout));
 
 		if (!result)
@@ -237,6 +236,7 @@ commanderror sendcommandwithanswer(char *command, char *buffer, int buffersize,
 		do
 		{
 			result = modem_trygetpacket();
+			WDT_RESET();
 		} while (!result && !checkDelay(timestamp, timeout));
 
 		if (!result)
@@ -273,6 +273,7 @@ commanderror sendcommandwithanswer(char *command, char *buffer, int buffersize,
 			do
 			{
 				result = modem_trygetpacket();
+				WDT_RESET();
 			} while (!result && !checkDelay(timestamp, timeout));
 
 			if (!result)
@@ -316,6 +317,7 @@ commanderror sendcommandwith2answer(char *command, char *buffer, int buffersize,
 		do
 		{
 			result = modem_trygetpacket();
+			WDT_RESET();
 		} while (!result && !checkDelay(timestamp, timeout));
 
 		if (!result)
@@ -352,6 +354,7 @@ commanderror sendcommandwith2answer(char *command, char *buffer, int buffersize,
 			do
 			{
 				result = modem_trygetpacket();
+				WDT_RESET();
 			} while (!result && !checkDelay(timestamp, timeout));
 
 			if (!result)
@@ -389,6 +392,7 @@ commanderror sendcommandwith2answer(char *command, char *buffer, int buffersize,
 				do
 				{
 					result = modem_trygetpacket();
+					WDT_RESET();
 				} while (!result && !checkDelay(timestamp, timeout));
 
 				if (!result)
