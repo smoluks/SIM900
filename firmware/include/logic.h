@@ -4,3 +4,7 @@ bool isProgramWorking();
 uint16_t getEstimateTime();
 
 void processLogic();
+
+enum algstage_e {
+	waitStart, waitlock, waitUnock, call
+};

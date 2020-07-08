@@ -24,6 +24,7 @@ void menu_password(uint8_t dtmfcode);
 void menu_delay(uint8_t dtmfcode);
 void menu_stop(uint8_t dtmfcode);
 
+extern enum algstage_e algstage;
 enum callstage_e
 {
 	waitCall, waitPasswd, waitDuration, waitStop, hangUp, waitStopPlayAndHangUp
@@ -67,14 +68,24 @@ void process_call()
 	if (callFlag)
 	{
 		sendcommand(pickUpCommand, 5000);
-		play("main.amr");
 		isCall = true;
-		passwd = 0;
-		passSymbolCount = 0;
-		wrongpasscount = 3;
-		duration = 0;
-		callstage = waitPasswd;
-		timestamp = getSystime();
+
+		if(algstage == call)
+		{
+			play("stopsuccessful.amr");
+			callstage = waitStopPlayAndHangUp;
+		}
+		else
+		{
+			play("main.amr");
+			passwd = 0;
+			passSymbolCount = 0;
+			wrongpasscount = 3;
+			duration = 0;
+			callstage = waitPasswd;
+			timestamp = getSystime();
+		}
+
 		callFlag = false;
 	}
 

@@ -13,17 +13,18 @@
 
 const uint32_t LOCK_TIMEOUT = 20 * 60 * 1000u;
 const uint32_t UNLOCK_TIMEOUT = 2 * 60 * 1000u;
+const uint32_t HANGUP_TIMEOUT = 20 * 1000u;
 
 enum algstage_e {
-	waitCall, waitlock, waitUnock
-} algstage = waitCall;
+	waitStart, waitlock, waitUnock, call
+} algstage = waitStart;
 
 bool _startFlag = false;
 uint16_t _duration;
 bool _stopFlag = false;
 
-uint32_t timestamp;
-uint32_t timestamp2;
+volatile uint32_t timestamp;
+volatile uint32_t timestamp2;
 
 extern bool isPlaying;
 
@@ -45,18 +46,14 @@ bool isProgramWorking()
 
 uint16_t getEstimateTime()
 {
-	//сколько прошло минут
-	uint16_t estimate = (getSystime() - timestamp) / 60000;
+	uint32_t left = _duration * 60 * 1000u - (getSystime() - timestamp);
 
-	if(!((getSystime() - timestamp) % 60000))
-		estimate++;
-
-	return _duration >=  estimate ? _duration - estimate : 0;
+	return left / 60000u;
 }
 
 void processLogic() {
 	switch (algstage) {
-	case waitCall:
+	case waitStart:
 		if (!_startFlag)
 			return;
 
@@ -68,7 +65,7 @@ void processLogic() {
 		if (_stopFlag || checkDelay(timestamp, LOCK_TIMEOUT)) {
 			OutputDisable();
 			AllLedOff();
-			algstage = waitCall;
+			algstage = waitStart;
 			_startFlag = false;
 			_stopFlag = false;
 			return;
@@ -84,7 +81,7 @@ void processLogic() {
 		if (_stopFlag) {
 			OutputDisable();
 			AllLedOff();
-			algstage = waitCall;
+			algstage = waitStart;
 			_startFlag = false;
 			_stopFlag = false;
 			return;
@@ -101,14 +98,22 @@ void processLogic() {
 				&& !checkDelay(timestamp2, UNLOCK_TIMEOUT))
 			return;
 
-		algstage = waitCall;
 		OutputDisable();
 		AllLedOff();
 
 		sendcommand(getCallCommand(), 20000);
-		delay(20000);
-		sendcommand(stopCallCommand, 5000);
+		timestamp = getSystime();
+		algstage = call;
 
+		break;
+
+	case call:
+		if (!checkDelay(timestamp, HANGUP_TIMEOUT))
+			return;
+
+		sendcommand(stopCallCommand, 5000);
 		_startFlag = false;
+		algstage = waitStart;
+		break;
 	}
 }
