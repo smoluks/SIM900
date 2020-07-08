@@ -210,6 +210,8 @@ void menu_stop(uint8_t dtmfcode)
 {
 	if (dtmfcode == '#')
 	{
+		stopProgram();
+
 		play("stopsuccessful.amr");
 		callstage = waitStopPlayAndHangUp;
 	}

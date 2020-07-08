@@ -45,7 +45,9 @@ bool isProgramWorking()
 
 uint16_t getEstimateTime()
 {
+	//сколько прошло минут
 	uint16_t estimate = (getSystime() - timestamp) / 60000;
+
 	if(!((getSystime() - timestamp) % 60000))
 		estimate++;
 
@@ -73,6 +75,7 @@ void processLogic() {
 		}
 		if (!IsLocked())
 			return;
+
 		algstage = waitUnock;
 		LedOrangeOn();
 		timestamp = getSystime();
@@ -103,7 +106,7 @@ void processLogic() {
 		AllLedOff();
 
 		sendcommand(getCallCommand(), 20000);
-		delay(15000);
+		delay(20000);
 		sendcommand(stopCallCommand, 5000);
 
 		_startFlag = false;
