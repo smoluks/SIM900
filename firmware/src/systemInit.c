@@ -32,8 +32,8 @@ void SystemInit(void)
 	GPIOC->CRH = 0x70000000;
 	GPIOC->CRL = 0x00000000;
 	GPIOC->ODR = 0x00008000;
-	//UART2
-	USART2->BRR = 625;
+	//UART2 - Modem
+	USART2->BRR = 313;
 	USART2->CR2 = 0x00000000;
 	USART2->CR3 = 0x00000000;
 	USART2->CR1 = USART_CR1_UE | USART_CR1_TE | USART_CR1_RE | USART_CR1_RXNEIE;
@@ -62,21 +62,17 @@ void SystemInit(void)
 
 void SystemCoreClockUpdate()
 {
-	//�������� ������� �����
 	RCC->CR = RCC_CR_HSEON;
 	while (!(RCC->CR & RCC_CR_HSERDY))
-		; //���� ���������� �������� ������
 
-	FLASH->ACR = FLASH_ACR_PRFTBE | FLASH_ACR_LATENCY_1; //�������� ������� ��� FLASH ������
+	FLASH->ACR = FLASH_ACR_PRFTBE | FLASH_ACR_LATENCY_1;
 	RCC->CFGR = RCC_CFGR_PLLMULL9 | RCC_CFGR_PLLSRC | RCC_CFGR_ADCPRE_DIV6
 			| RCC_CFGR_PPRE2_DIV1 | RCC_CFGR_PPRE1_DIV2 | RCC_CFGR_HPRE_DIV1;
 
-	RCC->CR |= RCC_CR_PLLON; //�������� PLL
-	while (!(RCC->CR & RCC_CR_PLLRDY))
-		; //���� ���������� PLL
+	RCC->CR |= RCC_CR_PLLON;
+	while (!(RCC->CR & RCC_CR_PLLRDY));
 
-	RCC->CFGR = RCC->CFGR | RCC_CFGR_SW_PLL; //������������� �� pll
-	while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL)
-		; //���� ������������ �� pll
+	RCC->CFGR = RCC->CFGR | RCC_CFGR_SW_PLL;
+	while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL);
 }
 

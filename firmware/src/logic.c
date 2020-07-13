@@ -23,8 +23,8 @@ bool _startFlag = false;
 uint16_t _duration;
 bool _stopFlag = false;
 
-volatile uint32_t timestamp;
-volatile uint32_t timestamp2;
+volatile uint32_t logic_timestamp;
+volatile uint32_t logic_timeout_timestamp;
 
 extern bool isPlaying;
 
@@ -46,7 +46,7 @@ bool isProgramWorking()
 
 uint16_t getEstimateTime()
 {
-	uint32_t left = _duration * 60 * 1000u - (getSystime() - timestamp);
+	uint32_t left = _duration * 60 * 1000u - (getSystime() - logic_timestamp);
 
 	return left / 60000u;
 }
@@ -60,9 +60,9 @@ void processLogic() {
 		_stopFlag = false;
 		LedGreenOn();
 		algstage = waitlock;
-		timestamp = getSystime();
+		logic_timestamp = getSystime();
 	case waitlock:
-		if (_stopFlag || checkDelay(timestamp, LOCK_TIMEOUT)) {
+		if (_stopFlag || checkDelay(logic_timestamp, LOCK_TIMEOUT)) {
 			OutputDisable();
 			AllLedOff();
 			algstage = waitStart;
@@ -75,8 +75,8 @@ void processLogic() {
 
 		algstage = waitUnock;
 		LedOrangeOn();
-		timestamp = getSystime();
-		timestamp2 = getSystime();
+		logic_timestamp = getSystime();
+		logic_timeout_timestamp = getSystime();
 	case waitUnock:
 		if (_stopFlag) {
 			OutputDisable();
@@ -89,26 +89,26 @@ void processLogic() {
 
 		if (IsLocked()) {
 			OutputEnable();
-			timestamp2 = getSystime();
+			logic_timeout_timestamp = getSystime();
 			LedRedOn();
 		} else
 			OutputDisable();
 
-		if (!checkDelay(timestamp, _duration * 60u * 1000u)
-				&& !checkDelay(timestamp2, UNLOCK_TIMEOUT))
+		if (!checkDelay(logic_timestamp, _duration * 60u * 1000u)
+				&& !checkDelay(logic_timeout_timestamp, UNLOCK_TIMEOUT))
 			return;
 
 		OutputDisable();
 		AllLedOff();
 
 		sendcommand(getCallCommand(), 20000);
-		timestamp = getSystime();
+		logic_timestamp = getSystime();
 		algstage = call;
 
 		break;
 
 	case call:
-		if (!checkDelay(timestamp, HANGUP_TIMEOUT))
+		if (!checkDelay(logic_timestamp, HANGUP_TIMEOUT))
 			return;
 
 		sendcommand(stopCallCommand, 5000);
