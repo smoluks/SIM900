@@ -1,10 +1,3 @@
-/*
- * eeprom.c
- *
- *  Created on: 3 июл. 2020 г.
- *      Author: Администратор
- */
-
 #include "stm32f1xx.h"
 #include "stdbool.h"
 

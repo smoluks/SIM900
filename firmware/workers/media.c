@@ -1,11 +1,3 @@
-/*
- * media.c
- *
- *	������ � ������������ � ������
- *  Created on: 4 ����. 2018 �.
- *      Author: �������������
- */
-
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -17,7 +9,7 @@ void process_next();
 void playNext();
 
 bool isPlaying = false;
-bool end = false;
+static bool end = false;
 
 bool mediacommands(char *packet)
 {

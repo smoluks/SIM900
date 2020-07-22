@@ -23,7 +23,7 @@
 							<option id="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.target_coreid.775873803" name="CpuCoreId" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.target_coreid" useByScannerDiscovery="false" value="0" valueType="string"/>
 							<option id="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.target_board.1247775747" name="Board" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.target_board" useByScannerDiscovery="false" value="genericBoard" valueType="string"/>
 							<option id="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.defaults.258483019" name="Defaults" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.defaults" useByScannerDiscovery="false" value="com.st.stm32cube.ide.common.services.build.inputs.revA.1.0.3 || Debug || true || Executable || com.st.stm32cube.ide.mcu.gnu.managedbuild.toolchain.base.gnu-tools-for-stm32 || STM32F103C8Tx || 0 || 0 || arm-none-eabi- || ${gnu_tools_for_stm32_compiler_path} || ../Inc ||  ||  || STM32 | STM32F1 | STM32F103C8Tx ||  || Src | Startup | Inc ||  ||  || ${workspace_loc:/${ProjName}/STM32F103C8TX_FLASH.ld} || true || NonSecure ||  ||  || " valueType="string"/>
-							<option id="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.converthex.93334993" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.converthex" useByScannerDiscovery="false" value="true" valueType="boolean"/>
+							<option id="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.converthex.93334993" name="Convert to Intel Hex file (-O ihex)" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.converthex" useByScannerDiscovery="false" value="true" valueType="boolean"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="com.st.stm32cube.ide.mcu.gnu.managedbuild.targetplatform.119235746" isAbstract="false" osList="all" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.targetplatform"/>
 							<builder buildPath="${workspace_loc:/SIM900}/Debug" id="com.st.stm32cube.ide.mcu.gnu.managedbuild.builder.699557825" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.builder"/>
 							<tool id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler.744583770" name="MCU GCC Assembler" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler">
@@ -34,6 +34,13 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/system}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/system/Include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/system/CMSIS}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/drivers}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/drivers/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/helpers}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/helpers/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/workers}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/workers/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/pt}&quot;"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler.input.1597480196" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler.input"/>
 							</tool>
@@ -53,6 +60,13 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/system}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/system/Include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/system/CMSIS}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/drivers}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/drivers/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/helpers}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/helpers/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/workers}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/workers/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/pt}&quot;"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.1487384061" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c"/>
 							</tool>
@@ -119,6 +133,13 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/system}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/system/Include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/system/CMSIS}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/drivers}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/drivers/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/helpers}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/helpers/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/workers}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/workers/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/pt}&quot;"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler.input.518706690" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler.input"/>
 							</tool>
@@ -137,6 +158,13 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/system}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/system/Include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/system/CMSIS}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/drivers}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/drivers/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/helpers}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/helpers/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/workers}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/workers/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SIM900/pt}&quot;"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.838441956" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c"/>
 							</tool>

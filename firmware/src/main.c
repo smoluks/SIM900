@@ -21,6 +21,9 @@ int main(void)
 		isInit = modem_init();
 	} while(!isInit);
 
+	initLogic();
+	initCall();
+
 	while(1)
 	{
 		WDT_RESET();

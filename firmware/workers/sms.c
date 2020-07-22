@@ -1,11 +1,5 @@
-/*
- * sms.c
- *
- *  Created on: 19 ����. 2018 �.
- *      Author: �������������
- */
-
 #include "string.h"
+#include "stdio.h"
 #include "stm32f1xx.h"
 #include "modem.h"
 #include "stringext.h"
@@ -14,18 +8,17 @@
 #include "config.h"
 
 void sendstatussms();
+void setphone(char sms[]);
 
-bool sms = false;
-char messagenumber[5];
+static bool sms = false;
+static char messagenumber[5];
 
-bool smsHandler(char *packet)
-{
-	if (strpartcmp(packet, "+CMTI: \"SM\""))
-	{
+bool smsHandler(char *packet) {
+	if (strpartcmp(packet, "+CMTI: \"SM\"")) {
+
 		//copy input number
 		stpncpy(messagenumber, packet + 12, sizeof(messagenumber) - 1);
-		for (uint8_t i = 0; i < 5; i++)
-		{
+		for (uint8_t i = 0; i < 5; i++) {
 			if (messagenumber[i] == '\r' || messagenumber[i] == '\n')
 				messagenumber[i] = 0;
 		}
@@ -36,41 +29,36 @@ bool smsHandler(char *packet)
 	return false;
 }
 
-char phonenumber[13];
-void processSms()
-{
-	if (sms)
-	{
-		sms = false;
+static char phonenumber[13];
+static char command[100];
+static char smstext[164];
+void processSms() {
+	if(!sms)
+		return;
 
-		char command[100];
-		char sms[164];
+	sms = false;
 
-		//read sms
-		snprintf(command, sizeof(command), "%s%s%s", "AT+CMGR=", messagenumber,
-				",0\r\n");
-		commanderror result = sendcommandwith2answer(command, command,
-				sizeof(command), sms, sizeof(sms), 5000);
-		if (result != C_OK)
-			return;
+	//read sms
+	snprintf(command, sizeof(command), "%s%s%s", "AT+CMGR=", messagenumber,
+			",0\r\n");
 
-		stpncpy(phonenumber, command + 21, sizeof(phonenumber) - 1);
+	if(sendcommandwith2answer(command, command, sizeof(command), smstext, sizeof(smstext), 5000))
+		return;
 
-		//Deleting SMS Messages from Message Storage
-		sendcommand("AT+CMGDA=\"DEL ALL\"\r\n", 5000);
+	stpncpy(phonenumber, command + 21, sizeof(phonenumber) - 1);
 
-		if (strpartcmp(sms, "get status")
-				|| strpartcmp(sms,
-						"042D0442043E0442002004300431043E043D0435043D04420020"))
-			sendstatussms();
+	//Deleting SMS Messages from Message Storage
+	if(sendcommand("AT+CMGDA=\"DEL ALL\"\r\n", 5000))
+		return;
 
-		if (strpartcmp(sms, "set phone"))
-			setphone(sms);
-	}
+	if (strpartcmp(smstext, "get status"))
+		sendstatussms();
+
+	if (strpartcmp(smstext, "set phone"))
+		setphone(smstext);
 }
 
-void sendstatussms()
-{
+void sendstatussms() {
 	char buffer[20];
 
 	commanderror result = sendcommandwithanswer("AT+CSQ\r\n", buffer,
@@ -93,8 +81,7 @@ void sendstatussms()
 	send_uart2(command);
 
 	char *answer;
-	do
-	{
+	do {
 		answer = receive_uart2(3, 2200);
 	} while (answer[2] != '>');
 
@@ -105,16 +92,16 @@ void sendstatussms()
 	send_uart2("master phone: ");
 	send_uart2(getMasterPhone());
 
-	char end[] =
-	{ 0x1A, 0x00 };
+	char end[] = { 0x1A, 0x00 };
 	send_uart2(end);
 
 	USART2->SR &= ~USART_SR_RXNE;
 	NVIC_EnableIRQ(USART2_IRQn);
+
+	getDataAnswer(0, 0, 10000);
 }
 
-void setphone(char sms[])
-{
+void setphone(char sms[]) {
 	if (strlen(sms) < 22)
 		return;
 
@@ -127,12 +114,12 @@ void setphone(char sms[])
 
 	char command[100];
 
-	snprintf(command, sizeof(command), "%s%s%s", "AT+CMGS=\"", phonenumber,	"\"\r\n");
+	snprintf(command, sizeof(command), "%s%s%s", "AT+CMGS=\"", phonenumber,
+			"\"\r\n");
 	send_uart2(command);
 
 	char *answer;
-	do
-	{
+	do {
 		answer = receive_uart2(1, 5000);
 	} while (answer[0] != '>');
 
@@ -140,11 +127,12 @@ void setphone(char sms[])
 	send_uart2(phone);
 	send_uart2("ok");
 
-	char end[] =
-	{ 0x1A, 0x00 };
+	char end[] = { 0x1A, 0x00 };
 	send_uart2(end);
 
 	USART2->SR &= ~USART_SR_RXNE;
 	NVIC_EnableIRQ(USART2_IRQn);
+
+	getDataAnswer(0, 0, 10000);
 }
 

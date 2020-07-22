@@ -1,9 +1,3 @@
-/*
- * atCommands.c
- *
- *  Created on: 2 июл. 2020 г.
- *      Author: Администратор
- */
 #include "stdio.h"
 #include "config.h"
 #include "stm32f1xx.h"
