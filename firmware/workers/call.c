@@ -86,6 +86,7 @@ int process_call() {
 		if (dtmf == '*') {
 			passwd = 0;
 			passSymbolCount = 0;
+			dtmf = 0;
 			continue;
 		} else if (dtmf >= '0' && dtmf <= '9') {
 			passwd = passwd * 10 + (dtmf - '0');
@@ -103,6 +104,7 @@ int process_call() {
 					play("badpassword.amr");
 					passSymbolCount = 0;
 					passwd = 0;
+					dtmf = 0;
 					continue;
 				}
 			} else {
@@ -177,7 +179,7 @@ int process_call() {
 		playSome(f, 5);
 
 		timestamp = getSystime();
-		PT_WAIT_WHILE(&call_pt, callFlag && !dtmf && !checkDelay(timestamp, 10000));
+		PT_WAIT_WHILE(&call_pt, callFlag && !dtmf && !checkDelay(timestamp, 15000));
 		stop();
 
 		if (dtmf == '#') {

@@ -30,7 +30,7 @@ void processMedia()
 	}
 }
 
-char *filesToPlay[16];
+static char filesToPlay[16][16];
 uint8_t filesCount;
 
 void playSome(char* files[], uint8_t count)
@@ -44,7 +44,7 @@ void playSome(char* files[], uint8_t count)
 
 	for (uint8_t i = 0; i < filesCount; i++)
 	{
-		filesToPlay[i] = files[i];
+		strncpy(filesToPlay[i], files[i], 15);
 	}
 
 	playNext();
@@ -54,7 +54,7 @@ void play(char *filename)
 {
 	stop();
 
-	filesToPlay[0] = filename;
+	strncpy(filesToPlay[0], filename, 15);
 	filesCount = 1;
 
 	playNext();
@@ -62,10 +62,10 @@ void play(char *filename)
 
 void stop()
 {
-	char buffer[11];
 	if (isPlaying)
 	{
-		sendcommandwithanswer("AT+CREC=5\r\n", buffer, 11, 5000);
+		sendcommand("AT+CREC=5\r\n", 5000);
+		end = false;
 		isPlaying = false;
 	}
 }
@@ -85,7 +85,8 @@ void playNext()
 	char play[64];
 	snprintf(play, sizeof(play), "%s%s%s", "AT+CREC=4,\"C:\\User\\", filename, "\",1,80\r\n");
 
-	if (!sendcommand(play, 5000))
+	commanderror error = sendcommand(play, 5000);
+	if (!error)
 		isPlaying = true;
 	else
 		process_next();
