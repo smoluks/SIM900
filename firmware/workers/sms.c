@@ -72,31 +72,20 @@ void sendstatussms() {
 	if (result != C_OK)
 		return;
 
-	NVIC_DisableIRQ(USART2_IRQn);
-
 	char command[100];
-
 	snprintf(command, sizeof(command), "%s%s%s", "AT+CMGS=\"", phonenumber,
 			"\"\r\n");
-	send_uart2(command);
+	result = sendCommandWithData(command, 2200);
+	if (result != C_OK)
+		return;
 
-	char *answer;
-	do {
-		answer = receive_uart2(3, 2200);
-	} while (answer[2] != '>');
-
-	send_uart2("provider: ");
-	send_uart2(buffer2 + 7);
-	send_uart2("level: ");
-	send_uart2(buffer + 6);
-	send_uart2("master phone: ");
-	send_uart2(getMasterPhone());
-
-	char end[] = { 0x1A, 0x00 };
-	send_uart2(end);
-
-	USART2->SR &= ~USART_SR_RXNE;
-	NVIC_EnableIRQ(USART2_IRQn);
+	sendData("provider: ");
+	sendData(buffer2 + 7);
+	sendData("level: ");
+	sendData(buffer + 6);
+	sendData("master phone: ");
+	sendData(getMasterPhone());
+	sendData("\x1A");
 
 	getDataAnswer(0, 0, 10000);
 }
@@ -110,28 +99,18 @@ void setphone(char sms[]) {
 
 	setMasterPhone(phone);
 
-	NVIC_DisableIRQ(USART2_IRQn);
-
 	char command[100];
 
 	snprintf(command, sizeof(command), "%s%s%s", "AT+CMGS=\"", phonenumber,
 			"\"\r\n");
-	send_uart2(command);
+	commanderror result = sendCommandWithData(command, 2200);
+	if (result != C_OK)
+		return;
 
-	char *answer;
-	do {
-		answer = receive_uart2(1, 5000);
-	} while (answer[0] != '>');
-
-	send_uart2("set master phone ");
-	send_uart2(phone);
-	send_uart2("ok");
-
-	char end[] = { 0x1A, 0x00 };
-	send_uart2(end);
-
-	USART2->SR &= ~USART_SR_RXNE;
-	NVIC_EnableIRQ(USART2_IRQn);
+	sendData("set master phone ");
+	sendData(phone);
+	sendData("ok");
+	sendData("\x1A");
 
 	getDataAnswer(0, 0, 10000);
 }

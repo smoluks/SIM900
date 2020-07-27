@@ -1,4 +1,7 @@
-#include "modem.h"
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "modemInit.h"
 #include "call.h"
 #include "sms.h"
 #include "gpio.h"
@@ -15,11 +18,7 @@ int main(void)
 
 	readConfig();
 
-	bool isInit = false;
-	do
-	{
-		isInit = modem_init();
-	} while(!isInit);
+	while(!modem_init());
 
 	initLogic();
 	initCall();

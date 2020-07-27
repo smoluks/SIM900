@@ -17,7 +17,7 @@ bool transmit = false;
 void USART2_IRQHandler() {
 	if (USART2->SR & USART_SR_ORE) {
 		//overrun - read as fast as can
-		uart2Rx(USART2->DR);
+		(void)USART2->DR;
 	}
 	if (USART2->SR & USART_SR_IDLE) {
 		//use as packet end?
@@ -36,24 +36,27 @@ static char rxbuffer[64];
 static char *nextrxcharptr = rxbuffer;
 static char lastdata;
 
-bool packetreceived = false;
+bool packetreceived = true;
+bool dataMarkerReceived = true;
 static char answer[64];
 
 //read uart
 void uart2Rx(char data) {
 	*nextrxcharptr++ = data;
 
-	//EOP?
-	if (data == 0x0A && lastdata == 0x0D) {
+	if (!dataMarkerReceived && data == '>') {
+		dataMarkerReceived = true;
+		nextrxcharptr = rxbuffer;
+	}
+	else if (data == 0x0A && lastdata == 0x0D) {
+		//EOP
 		GPIOA->BSRR = 0x0002; //set RTS
-		USART2->CR1 &= ~USART_CR1_RXNEIE;
 
 		*nextrxcharptr = 0;
 		uart2ProcessPacket();
 
 		nextrxcharptr = rxbuffer;
 
-		USART2->CR1 |= USART_CR1_RXNEIE;
 		GPIOA->BSRR = 0x00020000; //clr RTS
 	} else
 		lastdata = data;
@@ -76,72 +79,120 @@ void uart2ProcessPacket() {
 		return;
 	}
 
-	uint32_t timestamp = getSystime();
-	while (packetreceived && !checkDelay(timestamp, 5000u))
+	if(!packetreceived)
+	{
+		strncpy(answer, rxbuffer, 63);
+		packetreceived = true;
+	}
+}
+
+static char txBuffer[256];
+volatile char* txBufferWritePtr = txBuffer;
+volatile char* txBufferReadPtr = txBuffer;
+
+void uart2Tx() {
+	if(txBufferWritePtr == txBufferReadPtr)
+	{
+		//end
+		USART2->CR1 &= ~USART_CR1_TXEIE;
+		transmit = false;
+		return;
+	}
+
+	transmit = true;
+	char c = *txBufferReadPtr++;
+	while (GPIOA->IDR & 0x01) //CTS
 	{
 		WDT_RESET();
 	}
+	USART2->DR = c;
+	USART2->CR1 |= USART_CR1_TXEIE;
 
-	if(packetreceived)
-	{
-		timestamp = getSystime();
-	}
-
-	strncpy(answer, rxbuffer, 63);
-	packetreceived = true;
-}
-
-char *nexttxcharptr;
-
-void uart2Tx() {
-	char c = *nexttxcharptr++;
-	if (!c) {
-		USART2->CR1 &= ~USART_CR1_TXEIE;
-		transmit = false;
-	} else {
-		while (GPIOA->IDR & 0x01)
-			; //CTS
-		USART2->DR = c;
-	}
-}
-
-void uart2Clear()
-{
-	nextrxcharptr = rxbuffer;
-	packetreceived = false;
-
-	USART2->CR1 |= USART_CR1_RXNEIE;
-	GPIOA->BSRR = 0x00020000; //clr RTS
+	if(txBufferReadPtr == txBuffer + 256)
+		txBufferReadPtr = txBuffer;
 }
 
 //----------packet mode - new ---------
 //
 void modemSendPacket(char *data) {
-	USART2->DR = *data++;
-	nexttxcharptr = data;
-	transmit = true;
-	USART2->CR1 |= USART_CR1_TXEIE;
+	do {
+		char current = *data++;
+		if(!current)
+			break;
+
+		*txBufferWritePtr++ = current;
+		if(txBufferWritePtr == txBuffer + 256)
+			txBufferWritePtr = txBuffer;
+	}
+	while(true);
+
+	if(!transmit)
+		uart2Tx();
 
 	packetreceived = false;
 }
 
-//
-char* modemGetPacket(uint32_t timeout) {
+void modemSendData(char *data) {
+	do {
+		char current = *data++;
+		if(!current)
+			break;
+
+		*txBufferWritePtr++ = current;
+		if(txBufferWritePtr == txBuffer + 256)
+			txBufferWritePtr = txBuffer;
+	}
+	while(true);
+
+	if(!transmit)
+		uart2Tx();
+}
+
+commanderror waitDataMarker(char *data, uint32_t timeout) {
+	dataMarkerReceived = false;
+
 	uint32_t timestamp = getSystime();
-	while (!packetreceived && !checkDelay(timestamp, timeout))
+	while (!dataMarkerReceived && !packetreceived && !checkDelay(timestamp, timeout)) {
+		WDT_RESET();
+	}
+	if(dataMarkerReceived)
+		return C_OK;
+	else if (packetreceived)
 	{
+		packetreceived = false;
+		return C_ERROR;
+	}
+	else return C_TIMEOUT;
+}
+
+//
+char* modemGetPacket(uint32_t timeout, bool lastPacket) {
+	uint32_t timestamp = getSystime();
+	while (!packetreceived && !checkDelay(timestamp, timeout)) {
 		WDT_RESET();
 	}
 
 	if (!packetreceived)
+	{
+		packetreceived = true;
 		return 0;
+	}
 	else {
-		packetreceived = false;
+		packetreceived = lastPacket;
 		return answer;
 	}
 }
 
 //----------direct mode - old---------
+void uart2Clear() {
+	nextrxcharptr = rxbuffer;
+	packetreceived = true;
+	dataMarkerReceived = true;
+	USART2->SR &= ~USART_SR_RXNE;
+	GPIOA->BSRR = 0x00020000; //clr RTS
+}
+
+
 //send data
 void send_uart2(char *data) {
 	do {

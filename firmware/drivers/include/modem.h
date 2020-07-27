@@ -21,3 +21,6 @@ commanderror sendcommand(char* command, uint32_t timeout);
 commanderror sendcommandwithanswer(char* command, char* buffer, int buffersize, uint32_t timeout);
 commanderror sendcommandwith2answer(char* command, char* buffer, int buffersize, char* buffer2, int buffer2size, uint32_t timeout);
 
+commanderror sendCommandWithData(char *command, uint32_t timeout);
+void sendData(char *data);
+commanderror getDataAnswer(char *buffer, int buffersize, uint32_t timeout);

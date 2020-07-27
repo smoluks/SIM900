@@ -7,146 +7,152 @@
 #include "gpio.h"
 #include "systick.h"
 #include "uart2.h"
+#include "stringext.h"
 
 static uint8_t cpin = 0;
 static bool callReadyFlag = false;
 static bool smsReadyFlag = false;
 
 //Network registration handler
-bool modemInitCommands(char *packet)
-{
-	if (!strcmp(packet, "RDY\r\n"))
-	{
+bool modemInitCommands(char *packet) {
+	if (!strcmp(packet, "RDY\r\n")) {
 		//readyflag = true;
 		return true;
 	}
 	//sim ready
-	else if (!strcmp(packet, "+CPIN: READY\r\n"))
-	{
+	else if (!strcmp(packet, "+CPIN: READY\r\n")) {
 		return true;
 	}
 	//sim not ready
-	else if (!strcmp(packet, "+CPIN: NOT READY\r\n"))
-	{
+	else if (!strcmp(packet, "+CPIN: NOT READY\r\n")) {
 		cpin = 1;
 		return true;
 	}
 	//sim need pin
-	else if (!strcmp(packet, "+CPIN: SIM PIN\r\n"))
-	{
+	else if (!strcmp(packet, "+CPIN: SIM PIN\r\n")) {
 		cpin = 2;
 		sendcommand(pinCommand, 5000);
 		return true;
-	}
-	else if (!strcmp(packet, "Call Ready\r\n"))
-	{
+	} else if (!strcmp(packet, "Call Ready\r\n")) {
 		callReadyFlag = true;
 		return true;
-	}
-	else if (!strcmp(packet, "SMS Ready\r\n"))
-	{
+	} else if (!strcmp(packet, "SMS Ready\r\n")) {
 		smsReadyFlag = true;
 		return true;
-	}
-	else
+	} else
 		return false;
 }
 
-bool modem_init()
-{
-	NVIC_DisableIRQ(USART2_IRQn);
+bool modem_init() {
+	commanderror error;
+
+	NVIC_EnableIRQ(USART2_IRQn);
 	uart2Clear();
 
-	while (!IsModemPowerUp())
-		;
-	delay(200);
+	while (!IsModemPowerUp()) {
+		WDT_RESET();
 
-	//power up
-	ModemPowerUp();
-	delay(1200);
-	ModemPowerUpOff();
+		delay(200);
+		LedOrangeOff();
+		delay(200);
+		LedOrangeOn();
+	}
+
+	//---POWER UP---
+	error = sendcommand(pingCommand, 1000);
+	if (error == C_TIMEOUT) {
+		ModemPowerUp();
+		delay(1200);
+		ModemPowerUpOff();
+		delay(2200);
+
+		error = sendcommand(pingCommand, 1000);
+		if (error == C_TIMEOUT) {
+			ModemPowerUp();
+			delay(1200);
+			ModemPowerUpOff();
+			delay(2200);
+
+			error = sendcommand(pingCommand, 1000);
+			if (error == C_TIMEOUT) {
+				//reset
+				ModemReset();
+				delay(200);
+				ModemResetOff();
+				delay(2700);
+
+				error = sendcommand(pingCommand, 1000);
+				if (error == C_TIMEOUT)
+					return false;
+			}
+		}
+	}
+
+	//---UART params---
+	char buffer[16];
+	error = sendcommandwithanswer(getUartSpeedCommand, buffer, 16, 2200);
+	if (error != C_OK || !strpartcmp(buffer, "+IPR: 115200\r\n")) {
+
+		error = sendcommand(echoOffCommand, 2200);
+		if (error == C_OK)
+
+			error = sendcommand(shortResponceCommand, 2200);
+		if (error == C_TIMEOUT)
+			return false;
+
+		error = sendcommand(uartSpeedCommand, 2200);
+		if (error == C_TIMEOUT)
+			return false;
+
+		error = sendcommand(uartModeCommand, 2200);
+		if (error == C_TIMEOUT)
+			return false;
+
+		error = sendcommand(saveCommand, 2200);
+		if (error == C_TIMEOUT)
+			return false;
+		delay(200);
+	}
+
+	//---Registration---
+	callReadyFlag = false;
+	smsReadyFlag = false;
 
 	//reset
 	ModemReset();
 	delay(200);
 	ModemResetOff();
+	delay(100);
 
-	send_uart2("AT\r\n");
-	delay(500);
-
-	//PING
-	uint8_t count = 3;
-	char *result;
-	do
-	{
+	do {
 		WDT_RESET();
-
-		send_uart2("ATE0\r\n");
-		result = receive_uart2(11, 5000);
-	} while (!result && --count);
-	if (!count)
-		return false;
-
-	//Short responce
-	count = 3;
-	do
-	{
-		WDT_RESET();
-
-		send_uart2("ATV0\r\n");
-		result = receive_uart2(3, 1500);
-	} while (!result && --count);
-	if (!count)
-		return false;
-
-	//Uart speed
-	/*	do
-	 {
-	 send_uart2("AT+IPR=57600\r\n");
-	 result = receive_uart2(3, 1500);
-	 }
-	 while(!result);*/
-
-	//use RTS CTS
-	count = 3;
-	do
-	{
-		WDT_RESET();
-
-		send_uart2("AT+IFC=2,2\r\n");
-		result = receive_uart2(3, 1500);
-	} while (!result && --count);
-	if (!count)
-		return false;
-
-	//---Registration---
-	USART2->SR &= ~USART_SR_RXNE;
-	NVIC_EnableIRQ(USART2_IRQn);
-	commanderror error;
+		error = sendcommand(pingCommand, 100);
+	} while (error == C_TIMEOUT);
 
 	LedOrangeOff();
-	delay(200);
+
+	error = sendcommand(getRegistrationStatusCommand, 5000);
+	if (error == C_TIMEOUT)
+		return false;
 
 	uint32_t timestamp = getSystime();
-	error = sendcommand("AT+CPIN?\r\n", 5000);
-
-	while (!callReadyFlag || !smsReadyFlag)
-	{
+	while (!callReadyFlag || !smsReadyFlag) {
 		WDT_RESET();
 
-		if (cpin == 1)
-		{
-			//error = sendcommand("AT+CPIN?\r\n", 5000);
+		if (cpin == 1) {
+			//sim not ready
+			LedOrangeOn();
+			LedRedOff();
 			cpin = 0;
 		}
 
-		if (cpin == 2)
-		{
+		if (cpin == 2) {
+			//need pin
 			error = sendcommand(pinCommand, 5000);
 			cpin = 0;
 		}
 
-		if(checkDelay(timestamp, 30000u))
+		if (checkDelay(timestamp, 60000u))
 			return false;
 	}
 
