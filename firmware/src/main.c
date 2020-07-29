@@ -23,13 +23,17 @@ int main(void)
 	initLogic();
 	initCall();
 
+	processStatus();
+
 	while(1)
 	{
 		WDT_RESET();
 
-		process_call();
+		processCall();
 		processSms();
 		processLogic();
 		processMedia();
+
+
 	}
 }

@@ -4,4 +4,4 @@
 
 bool callcommands(char* packet);
 void initCall();
-int process_call();
+int processCall();

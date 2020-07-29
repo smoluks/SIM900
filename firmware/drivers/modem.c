@@ -117,6 +117,26 @@ commanderror getDataAnswer(char *buffer, int buffersize, uint32_t timeout) {
 	return errorcode;
 }
 
+//http
+commanderror sendCommandWithDownload(char *command, uint32_t timeout) {
+	modemSendPacket(command);
+
+	bool result = waitDownloadMarker(command, timeout);
+	if (!result)
+		return C_TIMEOUT;
+
+	return C_OK;
+}
+
+commanderror getDownloadAnswer(uint32_t timeout) {
+	char* result = modemGetPacket(timeout, true);
+	if (!result)
+		return C_TIMEOUT;
+
+	int8_t errorcode = geterrorcode(result);
+	return errorcode;
+}
+
 
 int8_t geterrorcode(char *data) {
 	if (*data >= '0' && *data <= '9' && *(data + 1) == 0x0D

@@ -17,7 +17,7 @@ bool transmit = false;
 void USART2_IRQHandler() {
 	if (USART2->SR & USART_SR_ORE) {
 		//overrun - read as fast as can
-		(void)USART2->DR;
+		(void) USART2->DR;
 	}
 	if (USART2->SR & USART_SR_IDLE) {
 		//use as packet end?
@@ -38,6 +38,7 @@ static char lastdata;
 
 bool packetreceived = true;
 bool dataMarkerReceived = true;
+bool downloadMarkerReceived = true;
 static char answer[64];
 
 //read uart
@@ -48,6 +49,19 @@ void uart2Rx(char data) {
 		dataMarkerReceived = true;
 		nextrxcharptr = rxbuffer;
 	}
+	if (!downloadMarkerReceived && nextrxcharptr == rxbuffer + 10) {
+		if (rxbuffer[0] == 'D'
+				&& rxbuffer[1] == 'O'
+				&& rxbuffer[2] == 'W'
+				&& rxbuffer[3] == 'N'
+				&& rxbuffer[4] == 'L'
+				&& rxbuffer[5] == 'O'
+				&& rxbuffer[6] == 'A'
+				&& rxbuffer[7] == 'D')
+			downloadMarkerReceived = true;
+		nextrxcharptr = rxbuffer;
+	}
+
 	else if (data == 0x0A && lastdata == 0x0D) {
 		//EOP
 		GPIOA->BSRR = 0x0002; //set RTS
@@ -79,20 +93,22 @@ void uart2ProcessPacket() {
 		return;
 	}
 
-	if(!packetreceived)
-	{
+	if (httpHandler(rxbuffer)) {
+		return;
+	}
+
+	if (!packetreceived) {
 		strncpy(answer, rxbuffer, 63);
 		packetreceived = true;
 	}
 }
 
 static char txBuffer[256];
-volatile char* txBufferWritePtr = txBuffer;
-volatile char* txBufferReadPtr = txBuffer;
+volatile char *txBufferWritePtr = txBuffer;
+volatile char *txBufferReadPtr = txBuffer;
 
 void uart2Tx() {
-	if(txBufferWritePtr == txBufferReadPtr)
-	{
+	if (txBufferWritePtr == txBufferReadPtr) {
 		//end
 		USART2->CR1 &= ~USART_CR1_TXEIE;
 		transmit = false;
@@ -108,7 +124,7 @@ void uart2Tx() {
 	USART2->DR = c;
 	USART2->CR1 |= USART_CR1_TXEIE;
 
-	if(txBufferReadPtr == txBuffer + 256)
+	if (txBufferReadPtr == txBuffer + 256)
 		txBufferReadPtr = txBuffer;
 }
 
@@ -117,16 +133,15 @@ void uart2Tx() {
 void modemSendPacket(char *data) {
 	do {
 		char current = *data++;
-		if(!current)
+		if (!current)
 			break;
 
 		*txBufferWritePtr++ = current;
-		if(txBufferWritePtr == txBuffer + 256)
+		if (txBufferWritePtr == txBuffer + 256)
 			txBufferWritePtr = txBuffer;
-	}
-	while(true);
+	} while (true);
 
-	if(!transmit)
+	if (!transmit)
 		uart2Tx();
 
 	packetreceived = false;
@@ -135,16 +150,15 @@ void modemSendPacket(char *data) {
 void modemSendData(char *data) {
 	do {
 		char current = *data++;
-		if(!current)
+		if (!current)
 			break;
 
 		*txBufferWritePtr++ = current;
-		if(txBufferWritePtr == txBuffer + 256)
+		if (txBufferWritePtr == txBuffer + 256)
 			txBufferWritePtr = txBuffer;
-	}
-	while(true);
+	} while (true);
 
-	if(!transmit)
+	if (!transmit)
 		uart2Tx();
 }
 
@@ -152,17 +166,34 @@ commanderror waitDataMarker(char *data, uint32_t timeout) {
 	dataMarkerReceived = false;
 
 	uint32_t timestamp = getSystime();
-	while (!dataMarkerReceived && !packetreceived && !checkDelay(timestamp, timeout)) {
+	while (!dataMarkerReceived && !packetreceived
+			&& !checkDelay(timestamp, timeout)) {
 		WDT_RESET();
 	}
-	if(dataMarkerReceived)
+	if (dataMarkerReceived)
 		return C_OK;
-	else if (packetreceived)
-	{
+	else if (packetreceived) {
 		packetreceived = false;
 		return C_ERROR;
+	} else
+		return C_TIMEOUT;
+}
+
+commanderror waitDownloadMarker(char *data, uint32_t timeout) {
+	downloadMarkerReceived = false;
+
+	uint32_t timestamp = getSystime();
+	while (!downloadMarkerReceived && !packetreceived
+			&& !checkDelay(timestamp, timeout)) {
+		WDT_RESET();
 	}
-	else return C_TIMEOUT;
+	if (downloadMarkerReceived)
+		return C_OK;
+	else if (packetreceived) {
+		packetreceived = false;
+		return C_ERROR;
+	} else
+		return C_TIMEOUT;
 }
 
 //
@@ -172,12 +203,10 @@ char* modemGetPacket(uint32_t timeout, bool lastPacket) {
 		WDT_RESET();
 	}
 
-	if (!packetreceived)
-	{
+	if (!packetreceived) {
 		packetreceived = true;
 		return 0;
-	}
-	else {
+	} else {
 		packetreceived = lastPacket;
 		return answer;
 	}
@@ -188,10 +217,10 @@ void uart2Clear() {
 	nextrxcharptr = rxbuffer;
 	packetreceived = true;
 	dataMarkerReceived = true;
+	downloadMarkerReceived = true;
 	USART2->SR &= ~USART_SR_RXNE;
 	GPIOA->BSRR = 0x00020000; //clr RTS
 }
-
 
 //send data
 void send_uart2(char *data) {

@@ -157,22 +157,70 @@ bool modem_init() {
 	}
 
 	//Enable DTMF
-	error = sendcommand("AT+DDET=1,0,0\r\n", 5000);
+	error = sendcommand("AT+DDET=1,0,0\r\n", 15000);
 	if (error != C_OK && error != C_NOCODE)
 		return false;
 
 	//Broadcast SMS are not accepted
-	error = sendcommand("AT+CSCB=1\r\n", 5000);
+	error = sendcommand("AT+CSCB=1\r\n", 15000);
 	if (error)
 		return false;
 
 	//Select SMS format
-	error = sendcommand("AT+CMGF=1\r\n", 5000);
+	error = sendcommand("AT+CMGF=1\r\n", 15000);
 	if (error)
 		return false;
 
 	//delete all sms
-	error = sendcommand("AT+CMGDA=\"DEL ALL\"\r\n", 5000);
+	error = sendcommand("AT+CMGDA=\"DEL ALL\"\r\n", 15000);
+	if (error)
+		return false;
+
+	//Attach from GPRS Service
+	do {
+		error = sendcommand("AT+CGATT=1\r\n", 15000);
+		if(!error)
+			break;
+
+		delay(100);
+	}
+	while(true);
+
+	//Enable TCP normal mode
+	error = sendcommand("AT+CIPMODE=0\r\n", 15000);
+	if (error)
+		return false;
+
+	//Monosocket
+	error = sendcommand("AT+CIPMUX=0\r\n", 15000);
+	if (error)
+		return false;
+
+	error = sendcommand("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"\r\n", 15000);
+	if (error)
+		return false;
+
+	error = sendcommand("AT+SAPBR=3,1,\"APN\",\"internet.tele2.ru\"\r\n", 15000);
+	if (error)
+		return false;
+
+	error = sendcommand("AT+SAPBR=3,1,\"USER\",\"tele2\"\r\n", 15000);
+	if (error)
+		return false;
+
+	error = sendcommand("AT+SAPBR=3,1,\"PWD\",\"tele2\"\r\n", 15000);
+	if (error)
+		return false;
+
+	error = sendcommand("AT+SAPBR=1,1\r\n", 15000);
+	if (error)
+		return false;
+
+	error = sendcommand("AT+HTTPINIT\r\n", 15000);
+	if (error)
+		return false;
+
+	error = sendcommand("AT+HTTPPARA=\"CID\",1\r\n", 15000);
 	if (error)
 		return false;
 

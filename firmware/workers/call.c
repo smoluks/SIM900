@@ -45,15 +45,15 @@ void initCall() {
 	PT_INIT(&call_pt);
 }
 
-int process_call() {
-	PT_BEGIN(&call_pt);
+int processCall() {
+	PT_BEGIN(&call_pt)
+	;
 
 	//wait call
 	PT_WAIT_UNTIL(&call_pt, callFlag);
 	dtmf = 0;
 
-	if(sendcommand(pickUpCommand, 5000))
-	{
+	if (sendcommand(pickUpCommand, 5000)) {
 		PT_RESTART(&call_pt);
 	}
 
@@ -67,11 +67,12 @@ int process_call() {
 
 	do {
 		//wait dtmf
-		PT_WAIT_WHILE(&call_pt, callFlag && !dtmf && !checkDelay(timestamp, 10000));
+		PT_WAIT_WHILE(&call_pt,
+				callFlag && !dtmf && !checkDelay(timestamp, 10000));
 
 		stop();
 
-		if(!callFlag){
+		if (!callFlag) {
 			PT_RESTART(&call_pt);
 		}
 		if (checkDelay(timestamp, 10000)) {
@@ -122,10 +123,11 @@ int process_call() {
 		timestamp = getSystime();
 
 		do {
-			PT_WAIT_WHILE(&call_pt, callFlag && !dtmf && !checkDelay(timestamp, 5000));
+			PT_WAIT_WHILE(&call_pt,
+					callFlag && !dtmf && !checkDelay(timestamp, 5000));
 			stop();
 
-			if(!callFlag){
+			if (!callFlag) {
 				PT_RESTART(&call_pt);
 			}
 			if (checkDelay(timestamp, 5000)) {
@@ -160,7 +162,7 @@ int process_call() {
 
 		PT_WAIT_WHILE(&call_pt, callFlag && isPlaying);
 
-		if(callFlag){
+		if (callFlag) {
 			stop();
 			sendcommand(hangUpCommand, 5000);
 			callFlag = false;
@@ -168,36 +170,50 @@ int process_call() {
 
 	} else {
 		//-----stop-----
+		play("current.amr");
+
 		uint16_t estimateTime = getEstimateTime();
-		char files[3][6] = { "0.amr", "0.amr", "0.amr" };
+		char *file = "0.amr";
 
-		files[0][0] = (estimateTime % 1000 / 100) + '0';
-		files[1][0] = (estimateTime % 100 / 10) + '0';
-		files[2][0] = (estimateTime % 10) + '0';
+		uint8_t n = estimateTime % 1000 / 100;
+		if (n) {
+			file[0] = n + '0';
+			playNext(file);
+		}
 
-		char *f[5] = { "stop.amr", files[2], files[1], files[0], "current.amr" };
-		playSome(f, 5);
+		uint8_t n2 = estimateTime % 100 / 10;
+		if (n || n2) {
+			file[0] = n2 + '0';
+			playNext(file);
+		}
+
+		n = estimateTime % 10;
+		file[0] = n + '0';
+		playNext(file);
+
+		playNext("stop.amr");
 
 		timestamp = getSystime();
-		PT_WAIT_WHILE(&call_pt, callFlag && !dtmf && !checkDelay(timestamp, 15000));
+		PT_WAIT_WHILE(&call_pt,
+				callFlag && !dtmf && !checkDelay(timestamp, 15000));
 		stop();
 
 		if (dtmf == '#') {
 			stopProgram();
 			play("stopsuccessful.amr");
 			PT_WAIT_WHILE(&call_pt, callFlag && isPlaying);
-			if(callFlag){
+			if (callFlag) {
 				sendcommand(hangUpCommand, 5000);
 				callFlag = false;
 			}
 		}
 
-		if(callFlag){
+		if (callFlag) {
 			stop();
 			sendcommand(hangUpCommand, 5000);
 			callFlag = false;
 		}
 	}
 
-	PT_END(&call_pt);
+PT_END(&call_pt);
 }

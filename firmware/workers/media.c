@@ -5,8 +5,8 @@
 #include "modem.h"
 #include "media.h"
 
-void process_next();
-void playNext();
+void processNextInternal();
+void playNextInternal();
 
 bool isPlaying = false;
 static bool end = false;
@@ -25,30 +25,13 @@ void processMedia()
 {
 	if(end)
 	{
-		process_next();
+		playNextInternal();
 		end = false;
 	}
 }
 
 static char filesToPlay[16][16];
 uint8_t filesCount;
-
-void playSome(char* files[], uint8_t count)
-{
-	stop();
-
-	if (filesCount <= 16)
-		filesCount = count;
-	else
-		filesCount = 16;
-
-	for (uint8_t i = 0; i < filesCount; i++)
-	{
-		strncpy(filesToPlay[i], files[i], 15);
-	}
-
-	playNext();
-}
 
 void play(char *filename)
 {
@@ -57,7 +40,19 @@ void play(char *filename)
 	strncpy(filesToPlay[0], filename, 15);
 	filesCount = 1;
 
-	playNext();
+	playNextInternal();
+}
+
+void playNext(char *filename)
+{
+	if(filesCount == 16)
+		return;
+
+	strncpy(filesToPlay[filesCount], filename, 15);
+	filesCount++;
+
+	if(!isPlaying)
+		playNextInternal();
 }
 
 void stop()
@@ -70,17 +65,15 @@ void stop()
 	}
 }
 
-void process_next()
+void playNextInternal()
 {
-	if(filesCount)
-		playNext();
-	else
+	if(!filesCount)
+	{
 		isPlaying = false;
-}
+		return;
+	}
 
-void playNext()
-{
-	char* filename = filesToPlay[--filesCount];
+	char* filename = filesToPlay[0];
 
 	char play[64];
 	snprintf(play, sizeof(play), "%s%s%s", "AT+CREC=4,\"C:\\User\\", filename, "\",1,80\r\n");
@@ -89,6 +82,6 @@ void playNext()
 	if (!error)
 		isPlaying = true;
 	else
-		process_next();
+		playNextInternal();
 }
 
