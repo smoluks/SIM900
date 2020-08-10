@@ -30,14 +30,14 @@ void processMedia()
 	}
 }
 
-static char filesToPlay[16][16];
+static char filesToPlay[16][32];
 uint8_t filesCount;
 
 void play(char *filename)
 {
 	stop();
 
-	strncpy(filesToPlay[0], filename, 15);
+	strncpy(filesToPlay[0], filename, 31);
 	filesCount = 1;
 
 	playNextInternal();
@@ -73,10 +73,12 @@ void playNextInternal()
 		return;
 	}
 
+	filesCount--;
+
 	char* filename = filesToPlay[0];
 
 	char play[64];
-	snprintf(play, sizeof(play), "%s%s%s", "AT+CREC=4,\"C:\\User\\", filename, "\",1,80\r\n");
+	snprintf(play, sizeof(play), "%s%s%s", "AT+CREC=4,\"C:\\User\\", filename, "\",0,100\r\n");
 
 	commanderror error = sendcommand(play, 5000);
 	if (!error)

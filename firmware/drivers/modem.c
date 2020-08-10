@@ -91,8 +91,12 @@ commanderror sendCommandWithData(char *command, uint32_t timeout) {
 	return C_OK;
 }
 
-void sendData(char *data) {
+void sendTextData(char *data) {
 	modemSendData(data);
+}
+
+void sendBinaryData(uint8_t *data, uint8_t count) {
+	modemSendBinaryData(data, count);
 }
 
 commanderror getDataAnswer(char *buffer, int buffersize, uint32_t timeout) {
@@ -137,6 +141,34 @@ commanderror getDownloadAnswer(uint32_t timeout) {
 	return errorcode;
 }
 
+commanderror getTcpData(char *buffer, uint32_t count, uint32_t timeout) {
+	char command[64];
+
+	char snum[5];
+	itoa(count, snum, 10);
+
+	snprintf(command, sizeof(command), "%s%s%s", "AT+HTTPREAD=0,", snum, "\r\n");
+	modemSendPacket(command);
+
+	//empty
+	char *result = modemGetPacket(timeout, false);
+	if (!result)
+		return C_TIMEOUT;
+
+	//+HTTPREAD: count
+	result = modemGetPacket(timeout, false);
+	if (!result)
+		return C_TIMEOUT;
+
+	//DATA
+	result = modemGetPacket(timeout, true);
+	if (!result)
+		return C_TIMEOUT;
+
+	stpncpy(buffer, result, count);
+
+	return C_OK;
+}
 
 int8_t geterrorcode(char *data) {
 	if (*data >= '0' && *data <= '9' && *(data + 1) == 0x0D

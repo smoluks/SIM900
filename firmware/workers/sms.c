@@ -79,13 +79,13 @@ void sendstatussms() {
 	if (result != C_OK)
 		return;
 
-	sendData("provider: ");
-	sendData(buffer2 + 7);
-	sendData("level: ");
-	sendData(buffer + 6);
-	sendData("master phone: ");
-	sendData(getMasterPhone());
-	sendData("\x1A");
+	sendTextData("provider: ");
+	sendTextData(buffer2 + 7);
+	sendTextData("level: ");
+	sendTextData(buffer + 6);
+	sendTextData("master phone: ");
+	sendTextData(getMasterPhone());
+	sendTextData("\x1A");
 
 	getDataAnswer(0, 0, 10000);
 }
@@ -107,10 +107,10 @@ void setphone(char sms[]) {
 	if (result != C_OK)
 		return;
 
-	sendData("set master phone ");
-	sendData(phone);
-	sendData("ok");
-	sendData("\x1A");
+	sendTextData("set master phone ");
+	sendTextData(phone);
+	sendTextData("ok");
+	sendTextData("\x1A");
 
 	getDataAnswer(0, 0, 10000);
 }

@@ -8,10 +8,25 @@
 #include "systick.h"
 #include "uart2.h"
 #include "stringext.h"
+#include "modemInit.h"
 
 static uint8_t cpin = 0;
 static bool callReadyFlag = false;
 static bool smsReadyFlag = false;
+
+
+struct providerSettings_s Tele2ProviderSettings = {
+		"internet.tele2.ru",
+		"tele2",
+		"tele2"
+};
+
+struct providerSettings_s MegafonProviderSettings = {
+		"internet",
+		"gdata",
+		"gdata"
+};
+
 
 //Network registration handler
 bool modemInitCommands(char *packet) {
@@ -89,30 +104,33 @@ bool modem_init() {
 	}
 
 	//---UART params---
+	bool needSave = false;
 	char buffer[16];
 	error = sendcommandwithanswer(getUartSpeedCommand, buffer, 16, 2200);
-	if (error != C_OK || !strpartcmp(buffer, "+IPR: 115200\r\n")) {
+	if (error != C_OK || !strpartcmp(buffer, "+IPR: 115200\r\n"))
+		needSave = true;
 
-		error = sendcommand(echoOffCommand, 2200);
-		if (error == C_OK)
+	sendcommand(echoOffCommand, 2200);
 
-			error = sendcommand(shortResponceCommand, 2200);
-		if (error == C_TIMEOUT)
-			return false;
+	error = sendcommand(shortResponceCommand, 2200);
+	if (error == C_TIMEOUT)
+		return false;
 
-		error = sendcommand(uartSpeedCommand, 2200);
-		if (error == C_TIMEOUT)
-			return false;
+	error = sendcommand(uartSpeedCommand, 2200);
+	if (error == C_TIMEOUT)
+		return false;
 
-		error = sendcommand(uartModeCommand, 2200);
-		if (error == C_TIMEOUT)
-			return false;
+	error = sendcommand(uartModeCommand, 2200);
+	if (error == C_TIMEOUT)
+		return false;
 
+	if (needSave) {
 		error = sendcommand(saveCommand, 2200);
 		if (error == C_TIMEOUT)
 			return false;
-		delay(200);
 	}
+
+	delay(200);
 
 	//---Registration---
 	callReadyFlag = false;
@@ -179,12 +197,11 @@ bool modem_init() {
 	//Attach from GPRS Service
 	do {
 		error = sendcommand("AT+CGATT=1\r\n", 15000);
-		if(!error)
+		if (!error)
 			break;
 
 		delay(100);
-	}
-	while(true);
+	} while (true);
 
 	//Enable TCP normal mode
 	error = sendcommand("AT+CIPMODE=0\r\n", 15000);
@@ -200,15 +217,19 @@ bool modem_init() {
 	if (error)
 		return false;
 
-	error = sendcommand("AT+SAPBR=3,1,\"APN\",\"internet.tele2.ru\"\r\n", 15000);
+	char command[64];
+	snprintf(command, sizeof(command), "%s%s%s", "AT+SAPBR=3,1,\"APN\",\"", MegafonProviderSettings.apn, "\"\r\n");
+	error = sendcommand(command, 15000);
 	if (error)
 		return false;
 
-	error = sendcommand("AT+SAPBR=3,1,\"USER\",\"tele2\"\r\n", 15000);
+	snprintf(command, sizeof(command), "%s%s%s", "AT+SAPBR=3,1,\"USER\",\"", MegafonProviderSettings.login, "\"\r\n");
+	error = sendcommand(command, 15000);
 	if (error)
 		return false;
 
-	error = sendcommand("AT+SAPBR=3,1,\"PWD\",\"tele2\"\r\n", 15000);
+	snprintf(command, sizeof(command), "%s%s%s", "AT+SAPBR=3,1,\"PWD\",\"", MegafonProviderSettings.password, "\"\r\n");
+	error = sendcommand(command, 15000);
 	if (error)
 		return false;
 

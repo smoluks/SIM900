@@ -97,6 +97,10 @@ void uart2ProcessPacket() {
 		return;
 	}
 
+	if (modemPowerCommandsHandler(rxbuffer)) {
+			return;
+	}
+
 	if (!packetreceived) {
 		strncpy(answer, rxbuffer, 63);
 		packetreceived = true;
@@ -152,6 +156,22 @@ void modemSendData(char *data) {
 		char current = *data++;
 		if (!current)
 			break;
+
+		*txBufferWritePtr++ = current;
+		if (txBufferWritePtr == txBuffer + 256)
+			txBufferWritePtr = txBuffer;
+	} while (true);
+
+	if (!transmit)
+		uart2Tx();
+}
+
+void modemSendBinaryData(char *data, uint8_t count) {
+	do {
+		if (!count--)
+			break;
+
+		char current = *data++;
 
 		*txBufferWritePtr++ = current;
 		if (txBufferWritePtr == txBuffer + 256)

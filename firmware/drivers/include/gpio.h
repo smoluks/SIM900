@@ -26,3 +26,10 @@
 #define IsModemPowerUp() (GPIOB->IDR & 0x00000004)
 #define ModemPowerUp() (GPIOB->BSRR = 0x00040000)
 #define ModemPowerUpOff() (GPIOB->BSRR = 0x00000004)
+
+#define AccessLedGreenOn() (GPIOB->BSRR = 0x00008000)
+#define AccessLedGreenOff() (GPIOB->BSRR = 0x80000000)
+#define AccessLedRedOn() (GPIOA->BSRR = 0x00000100)
+#define AccessLedRedOff() (GPIOA->BSRR = 0x01000000)
+#define AccessBeeperOn() (GPIOB->BSRR = 0x00001000)
+#define AccessBeeperOff() (GPIOB->BSRR = 0x10000000)

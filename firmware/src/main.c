@@ -22,8 +22,10 @@ int main(void)
 
 	initLogic();
 	initCall();
+	initRfid();
 
-	processStatus();
+	NVIC_EnableIRQ(USART1_IRQn);
+	sendStatus();
 
 	while(1)
 	{
@@ -33,7 +35,7 @@ int main(void)
 		processSms();
 		processLogic();
 		processMedia();
-
-
+		processRfid();
+		processStatus();
 	}
 }
