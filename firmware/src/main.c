@@ -1,6 +1,5 @@
 #include <stdbool.h>
 #include <stdint.h>
-
 #include "modemInit.h"
 #include "call.h"
 #include "sms.h"
@@ -11,6 +10,8 @@
 #include "media.h"
 #include "config.h"
 #include "systick.h"
+#include "rfid.h"
+#include "status.h"
 
 int main(void)
 {
@@ -25,8 +26,7 @@ int main(void)
 	initRfid();
 
 	NVIC_EnableIRQ(USART1_IRQn);
-	sendStatus();
-
+	//sendStatus();
 	while(1)
 	{
 		WDT_RESET();

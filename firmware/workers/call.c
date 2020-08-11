@@ -16,16 +16,16 @@ static bool callFlag = false;
 static bool hangUpFlag = false;
 static uint8_t dtmf = 0;
 
-bool callcommands(char *packet) {
-	if (!strcmp(packet, "2\r\n")) {
+bool callcommands(uint8_t *packet) {
+	if (!strcmp((char*)packet, "2\r\n")) {
 		//Ring
 		callFlag = true;
 		hangUpFlag = false;
 		return true;
-	} else if (!strcmp(packet, "3\r\n")) {
+	} else if (!strcmp((char*)packet, "3\r\n")) {
 		callFlag = false;
 		return true;
-	} else if (strpartcmp(packet, "+DTMF:")) {
+	} else if (strpartcmp((char*)packet, "+DTMF:")) {
 		dtmf = packet[7];
 		return true;
 	}
@@ -57,7 +57,7 @@ int processCall() {
 		PT_RESTART(&call_pt);
 	}
 
-	play("main.amr");
+	play("main.amr", false);
 
 	passwd = 0;
 	passSymbolCount = 0;
@@ -102,7 +102,7 @@ int processCall() {
 					callFlag = false;
 					PT_RESTART(&call_pt);
 				} else {
-					play("badpassword.amr");
+					play("badpassword.amr", false);
 					passSymbolCount = 0;
 					passwd = 0;
 					dtmf = 0;
@@ -119,7 +119,7 @@ int processCall() {
 
 	if (!isProgramWorking()) {
 		//-----start-----
-		play("delay.amr");
+		play("delay.amr", false);
 		timestamp = getSystime();
 
 		do {
@@ -157,8 +157,8 @@ int processCall() {
 			dtmf = 0;
 		} while (true);
 
-		startProgram(duration);
-		play("start.amr");
+		startProgram(duration, false);
+		play("start.amr", false);
 
 		PT_WAIT_WHILE(&call_pt, callFlag && isPlaying);
 
@@ -170,7 +170,7 @@ int processCall() {
 
 	} else {
 		//-----stop-----
-		play("current.amr");
+		play("current.amr", false);
 
 		uint16_t estimateTime = getEstimateTime();
 		char *file = "0.amr";
@@ -178,20 +178,20 @@ int processCall() {
 		uint8_t n = estimateTime % 1000 / 100;
 		if (n) {
 			file[0] = n + '0';
-			playNext(file);
+			playNext(file, false);
 		}
 
 		uint8_t n2 = estimateTime % 100 / 10;
 		if (n || n2) {
 			file[0] = n2 + '0';
-			playNext(file);
+			playNext(file, false);
 		}
 
 		n = estimateTime % 10;
 		file[0] = n + '0';
-		playNext(file);
+		playNext(file, false);
 
-		playNext("stop.amr");
+		playNext("stop.amr", false);
 
 		timestamp = getSystime();
 		PT_WAIT_WHILE(&call_pt,
@@ -200,7 +200,7 @@ int processCall() {
 
 		if (dtmf == '#') {
 			stopProgram();
-			play("stopsuccessful.amr");
+			play("stopsuccessful.amr", false);
 			PT_WAIT_WHILE(&call_pt, callFlag && isPlaying);
 			if (callFlag) {
 				sendcommand(hangUpCommand, 5000);

@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Администратор\\Desktop\\RemoteWasher\\RemoteWasher\\RemoteWasher.csproj": {}
+    "D:\\proj\\SIM900\\RemoteWasher\\RemoteWasher\\RemoteWasher.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Администратор\\Desktop\\RemoteWasher\\RemoteWasher\\RemoteWasher.csproj": {
+    "D:\\proj\\SIM900\\RemoteWasher\\RemoteWasher\\RemoteWasher.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Администратор\\Desktop\\RemoteWasher\\RemoteWasher\\RemoteWasher.csproj",
+        "projectUniqueName": "D:\\proj\\SIM900\\RemoteWasher\\RemoteWasher\\RemoteWasher.csproj",
         "projectName": "RemoteWasher",
-        "projectPath": "C:\\Users\\Администратор\\Desktop\\RemoteWasher\\RemoteWasher\\RemoteWasher.csproj",
+        "projectPath": "D:\\proj\\SIM900\\RemoteWasher\\RemoteWasher\\RemoteWasher.csproj",
         "packagesPath": "C:\\Users\\Администратор\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Администратор\\Desktop\\RemoteWasher\\RemoteWasher\\obj\\",
+        "outputPath": "D:\\proj\\SIM900\\RemoteWasher\\RemoteWasher\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Администратор\\AppData\\Roaming\\NuGet\\NuGet.Config",

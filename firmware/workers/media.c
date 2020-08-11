@@ -11,9 +11,9 @@ void playNextInternal();
 bool isPlaying = false;
 static bool end = false;
 
-bool mediacommands(char *packet)
+bool mediacommands(uint8_t *packet)
 {
-	if (strpartcmp(packet, "+CREC: 0"))
+	if (strpartcmp((char*)packet, "+CREC: 0"))
 	{
 		end = true;
 		return true;
@@ -33,7 +33,7 @@ void processMedia()
 static char filesToPlay[16][32];
 uint8_t filesCount;
 
-void play(char *filename)
+void play(char *filename, bool external)
 {
 	stop();
 
@@ -43,7 +43,7 @@ void play(char *filename)
 	playNextInternal();
 }
 
-void playNext(char *filename)
+void playNext(char *filename, bool external)
 {
 	if(filesCount == 16)
 		return;

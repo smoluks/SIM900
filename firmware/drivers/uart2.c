@@ -7,6 +7,8 @@
 #include "sms.h"
 #include "systick.h"
 #include "modemInit.h"
+#include "modempower.h"
+#include "http.h"
 
 void uart2Rx(char data);
 void uart2ProcessPacket();
@@ -32,14 +34,14 @@ void USART2_IRQHandler() {
 	}
 }
 
-static char rxbuffer[64];
-static char *nextrxcharptr = rxbuffer;
-static char lastdata;
+static uint8_t rxbuffer[64];
+static uint8_t *nextrxcharptr = rxbuffer;
+static uint8_t lastdata;
 
 bool packetreceived = true;
 bool dataMarkerReceived = true;
 bool downloadMarkerReceived = true;
-static char answer[64];
+static uint8_t answer[64];
 
 //read uart
 void uart2Rx(char data) {
@@ -102,7 +104,7 @@ void uart2ProcessPacket() {
 	}
 
 	if (!packetreceived) {
-		strncpy(answer, rxbuffer, 63);
+		strncpy((char*)answer, (char*)rxbuffer, 63);
 		packetreceived = true;
 	}
 }
@@ -166,12 +168,12 @@ void modemSendData(char *data) {
 		uart2Tx();
 }
 
-void modemSendBinaryData(char *data, uint8_t count) {
+void modemSendBinaryData(uint8_t *data, uint8_t count) {
 	do {
 		if (!count--)
 			break;
 
-		char current = *data++;
+		uint8_t current = *data++;
 
 		*txBufferWritePtr++ = current;
 		if (txBufferWritePtr == txBuffer + 256)
@@ -217,7 +219,7 @@ commanderror waitDownloadMarker(char *data, uint32_t timeout) {
 }
 
 //
-char* modemGetPacket(uint32_t timeout, bool lastPacket) {
+uint8_t* modemGetPacket(uint32_t timeout, bool lastPacket) {
 	uint32_t timestamp = getSystime();
 	while (!packetreceived && !checkDelay(timestamp, timeout)) {
 		WDT_RESET();
@@ -259,8 +261,8 @@ void send_uart2(char *data) {
 }
 
 //receive data
-char* receive_uart2(uint8_t count, uint32_t timeout) {
-	char *pointer = rxbuffer;
+uint8_t* receive_uart2(uint8_t count, uint32_t timeout) {
+	uint8_t *pointer = rxbuffer;
 	uint32_t timestamp = getSystime();
 
 	while (count--) {

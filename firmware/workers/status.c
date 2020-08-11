@@ -1,6 +1,11 @@
 #include "stm32f1xx.h"
 #include <stdbool.h>
+#include <stdlib.h>
 #include "modem.h"
+#include "systick.h"
+#include "http.h"
+
+void sendStatus();
 
 static uint32_t timestamp;
 void processStatus(){

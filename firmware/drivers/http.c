@@ -1,4 +1,6 @@
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "modem.h"
 #include "systick.h"
 #include "stringext.h"
@@ -9,19 +11,19 @@ struct httpAnswer_s getResponce;
 
 #define BASE_PATH "http://www.smoluks.ru:5001/1/"
 
-bool httpHandler(char *packet) {
-	if (strpartcmp(packet, "+HTTPACTION: 1")) {
+bool httpHandler(uint8_t *packet) {
+	if (strpartcmp((char*)packet, "+HTTPACTION: 1")) {
 		if (!postResponce.received) {
 			postResponce.received = true;
-			postResponce.code = atoi(packet + 15);
-			postResponce.answerLength = atoi(packet + 19);
+			postResponce.code = atoi((char*)(packet + 15));
+			postResponce.answerLength = atoi((char*)(packet + 19));
 		}
 		return true;
-	} else if (strpartcmp(packet, "+HTTPACTION: 0")) {
+	} else if (strpartcmp((char*)packet, "+HTTPACTION: 0")) {
 		if (!getResponce.received) {
 			getResponce.received = true;
-			getResponce.code = atoi(packet + 15);
-			getResponce.answerLength = atoi(packet + 19);
+			getResponce.code = atoi((char*)(packet + 15));
+			getResponce.answerLength = atoi((char*)(packet + 19));
 		}
 		return true;
 	} else
@@ -29,7 +31,7 @@ bool httpHandler(char *packet) {
 }
 
 char command[128];
-void sendGet(char *path, uint8_t *result, uint8_t resultLength) {
+commanderror sendGet(char *path, uint8_t *result, uint8_t resultLength) {
 	getResponce.received = false;
 
 	//make path
@@ -55,7 +57,6 @@ void sendGet(char *path, uint8_t *result, uint8_t resultLength) {
 		return C_ERROR;
 
 	//get answer
-	uint8_t buffer[64];
 	error = getTcpData(result, resultLength, 2200);
 	if (error)
 		return error;

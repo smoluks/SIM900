@@ -10,12 +10,13 @@ enum rfidReceiveState_e {
 	rfidWaitStopToken
 } rfidReceiveState = rfidWaitStartToken;
 
+static uint8_t crc;
+bool rfidFlag = false;
 uint8_t rfidCode[5];
 static uint8_t rfidCodeHandle;
 
 static uint8_t temp;
-static uint8_t crc;
-bool rfidFlag = false;
+
 void USART1_IRQHandler() {
 	if (USART1->SR & USART_SR_RXNE || USART1->SR & USART_SR_ORE) {
 		uint8_t data = USART1->DR;

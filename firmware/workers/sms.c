@@ -13,11 +13,11 @@ void setphone(char sms[]);
 static bool sms = false;
 static char messagenumber[5];
 
-bool smsHandler(char *packet) {
-	if (strpartcmp(packet, "+CMTI: \"SM\"")) {
+bool smsHandler(uint8_t *packet) {
+	if (strpartcmp((char*)packet, "+CMTI: \"SM\"")) {
 
 		//copy input number
-		stpncpy(messagenumber, packet + 12, sizeof(messagenumber) - 1);
+		stpncpy(messagenumber, (char*)(packet + 12), sizeof(messagenumber) - 1);
 		for (uint8_t i = 0; i < 5; i++) {
 			if (messagenumber[i] == '\r' || messagenumber[i] == '\n')
 				messagenumber[i] = 0;

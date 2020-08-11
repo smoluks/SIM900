@@ -5,13 +5,13 @@
 char callCommand[22];
 char* getCallCommand()
 {
-	snprintf(callCommand, sizeof(callCommand), "%s%s%s", "ATD", getMasterPhone(), ";\r\n");
+	snprintf(callCommand, sizeof(callCommand), "ATD%s;\r\n", getMasterPhone());
 	return callCommand;
 }
 
 char smsCommand[28] ;
 char* getSmsCommand()
 {
-	snprintf(smsCommand, sizeof(smsCommand), "%s%s%s", "AT+CMGS=\"", getMasterPhone(), "\"\r\n");
+	snprintf(smsCommand, sizeof(smsCommand), "AT+CMGS=\"%s\"\r\n", getMasterPhone());
 	return smsCommand;
 }

@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -31,18 +30,28 @@ namespace RemoteWasher.Controllers
 
         [HttpPost]
         [Route("/{deviceId}/card")]
-        public async Task<byte> CheckCardAsync(string deviceId)
+        public async Task<IActionResult> CheckCard(string deviceId)
         {
-            byte[] cardId;
-            using (var ms = new MemoryStream(5))
-            {
-                await Request.Body.CopyToAsync(ms);
-                cardId = ms.ToArray();
-            }
+            byte[] cardId = new byte[5];
+            await Request.Body.ReadAsync(cardId, 0, 5);
 
             _logger.LogInformation($"Check card 0x{ByteArrayToString(cardId)}, device {deviceId}");
 
-            return 1;
+            return File(new byte[] { 1234 & 0xFF, 1234 >> 8 }, "application/octet-stream");
+        }
+        [HttpPost]
+
+        [Route("/{deviceId}/card/writeoff")]
+        public async Task WriteOffCardAsync(string deviceId)
+        {
+            byte[] cardId = new byte[7];
+            await Request.Body.ReadAsync(cardId, 0, 5);
+
+            byte[] d = new byte[2];
+            await Request.Body.ReadAsync(d, 0, 2);
+            var duration = d[0] + (d[1] << 8);
+
+            _logger.LogInformation($"Write-off card 0x{ByteArrayToString(cardId)}, duration {duration}, device {deviceId}");
         }
 
         public static string ByteArrayToString(byte[] ba)

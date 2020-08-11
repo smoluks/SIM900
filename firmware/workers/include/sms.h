@@ -7,5 +7,5 @@
 
 #pragma once
 
-bool smsHandler(char* packet);
+bool smsHandler(uint8_t* packet);
 void processSms();

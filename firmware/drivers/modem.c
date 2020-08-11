@@ -1,9 +1,11 @@
 #include "stm32f1xx.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "uart2.h"
 #include "modem.h"
 #include "systick.h"
 #include "gpio.h"
-#include "string.h"
 #include "pt-sem.h"
 
 int8_t geterrorcode(char *data);
@@ -141,7 +143,7 @@ commanderror getDownloadAnswer(uint32_t timeout) {
 	return errorcode;
 }
 
-commanderror getTcpData(char *buffer, uint32_t count, uint32_t timeout) {
+commanderror getTcpData(uint8_t *buffer, uint32_t count, uint32_t timeout) {
 	char command[64];
 
 	char snum[5];
@@ -165,7 +167,7 @@ commanderror getTcpData(char *buffer, uint32_t count, uint32_t timeout) {
 	if (!result)
 		return C_TIMEOUT;
 
-	stpncpy(buffer, result, count);
+	stpncpy((char*)buffer, result, count);
 
 	return C_OK;
 }

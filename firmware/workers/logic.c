@@ -5,21 +5,24 @@
 #include "atCommands.h"
 #include "logic.h"
 #include "pt.h"
+#include "rfid.h"
 
 bool workCycle();
 
 static bool _startFlag = false;
 static uint16_t _duration;
 static bool _stopFlag = false;
+static bool _rfid = false;
 static struct pt logic_pt;
 static volatile uint32_t logic_timestamp;
 static volatile uint32_t logic_timeout_timestamp;
 
 extern bool isPlaying;
 
-void startProgram(uint16_t dur) {
+void startProgram(uint16_t dur, bool rfid) {
 	_duration = dur;
 	_startFlag = true;
+	_rfid = rfid;
 }
 
 void stopProgram() {
@@ -41,7 +44,8 @@ void initLogic() {
 }
 
 int processLogic() {
-	PT_BEGIN(&logic_pt);
+	PT_BEGIN(&logic_pt)
+	;
 
 	//wait start
 	PT_WAIT_UNTIL(&logic_pt, _startFlag);
@@ -51,7 +55,8 @@ int processLogic() {
 	logic_timestamp = getSystime();
 
 	//wait lock
-	PT_WAIT_UNTIL(&logic_pt, IsLocked() || _stopFlag || checkDelay(logic_timestamp, LOCK_TIMEOUT));
+	PT_WAIT_UNTIL(&logic_pt,
+			IsLocked() || _stopFlag || checkDelay(logic_timestamp, LOCK_TIMEOUT));
 	if (_stopFlag || checkDelay(logic_timestamp, LOCK_TIMEOUT)) {
 		OutputDisable();
 		AllLedOff();
@@ -76,36 +81,38 @@ int processLogic() {
 		PT_RESTART(&logic_pt);
 	}
 
-	if(sendcommand(getCallCommand(), 20000))
-	{
-		_startFlag = false;
-		_stopFlag = false;
-		PT_RESTART(&logic_pt);
+	if (_rfid) {
+		sendWaste((getSystime() - logic_timestamp - UNLOCK_TIMEOUT) / 60000);
+	} else {
+		if (sendcommand(getCallCommand(), 20000)) {
+			_startFlag = false;
+			_stopFlag = false;
+			PT_RESTART(&logic_pt);
+		}
+
+		logic_timestamp = getSystime();
+
+		PT_WAIT_UNTIL(&logic_pt, checkDelay(logic_timestamp, HANGUP_TIMEOUT));
+
+		sendcommand(stopCallCommand, 5000);
 	}
-
-	logic_timestamp = getSystime();
-
-	PT_WAIT_UNTIL(&logic_pt, checkDelay(logic_timestamp, HANGUP_TIMEOUT));
-
-	sendcommand(stopCallCommand, 5000);
-
 	_startFlag = false;
 	_stopFlag = false;
 
-	PT_END(&logic_pt);
+PT_END(&logic_pt);
 }
 
-bool workCycle(){
-	if (_stopFlag)
-		return false;
+bool workCycle() {
+if (_stopFlag)
+	return false;
 
-	if (IsLocked()) {
-		OutputEnable();
-		logic_timeout_timestamp = getSystime();
-		LedRedOn();
-	} else
-		OutputDisable();
+if (IsLocked()) {
+	OutputEnable();
+	logic_timeout_timestamp = getSystime();
+	LedRedOn();
+} else
+	OutputDisable();
 
-	return (!checkDelay(logic_timestamp, _duration * 60u * 1000u)
-			&& !checkDelay(logic_timeout_timestamp, UNLOCK_TIMEOUT));
+return (!checkDelay(logic_timestamp, _duration * 60u * 1000u)
+		&& !checkDelay(logic_timeout_timestamp, UNLOCK_TIMEOUT));
 }

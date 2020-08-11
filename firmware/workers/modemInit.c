@@ -1,7 +1,7 @@
 #include "stm32f1xx.h"
-#include "string.h"
-#include "stdint.h"
-#include "stdbool.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdbool.h>
 #include "modem.h"
 #include "atCommands.h"
 #include "gpio.h"
@@ -29,29 +29,29 @@ struct providerSettings_s MegafonProviderSettings = {
 
 
 //Network registration handler
-bool modemInitCommands(char *packet) {
-	if (!strcmp(packet, "RDY\r\n")) {
+bool modemInitCommands(uint8_t *packet) {
+	if (!strcmp((char*)packet, "RDY\r\n")) {
 		//readyflag = true;
 		return true;
 	}
 	//sim ready
-	else if (!strcmp(packet, "+CPIN: READY\r\n")) {
+	else if (!strcmp((char*)packet, "+CPIN: READY\r\n")) {
 		return true;
 	}
 	//sim not ready
-	else if (!strcmp(packet, "+CPIN: NOT READY\r\n")) {
+	else if (!strcmp((char*)packet, "+CPIN: NOT READY\r\n")) {
 		cpin = 1;
 		return true;
 	}
 	//sim need pin
-	else if (!strcmp(packet, "+CPIN: SIM PIN\r\n")) {
+	else if (!strcmp((char*)packet, "+CPIN: SIM PIN\r\n")) {
 		cpin = 2;
 		sendcommand(pinCommand, 5000);
 		return true;
-	} else if (!strcmp(packet, "Call Ready\r\n")) {
+	} else if (!strcmp((char*)packet, "Call Ready\r\n")) {
 		callReadyFlag = true;
 		return true;
-	} else if (!strcmp(packet, "SMS Ready\r\n")) {
+	} else if (!strcmp((char*)packet, "SMS Ready\r\n")) {
 		smsReadyFlag = true;
 		return true;
 	} else
