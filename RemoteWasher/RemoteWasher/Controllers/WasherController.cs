@@ -1,5 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using MediatR;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using RemoteWasher.Handlers.Requests;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -10,15 +12,17 @@ namespace RemoteWasher.Controllers
     public class WasherController : ControllerBase
     {
         private readonly ILogger<WasherController> _logger;
+        private readonly IMediator _mediator;
 
-        public WasherController(ILogger<WasherController> logger)
+        public WasherController(ILogger<WasherController> logger, IMediator mediator)
         {
             _logger = logger;
+            _mediator = mediator;
         }
 
         [HttpPost]
         [Route("/{deviceId}/status")]
-        public async Task ProcessEventAsync([FromRoute]string deviceId)
+        public async Task ProcessEventAsync([FromRoute]int deviceId)
         {
             var result = new byte[1]; 
             await Request.Body.ReadAsync(result, 0, 1);
@@ -26,6 +30,12 @@ namespace RemoteWasher.Controllers
             var level = result[0];
 
             _logger.LogInformation($"Sygnal level {level}, device {deviceId}");
+
+            await _mediator.Send(new SetStatusRequest()
+            {
+                DeviceId = deviceId,
+                SygnalLevel = level
+            });
         }
 
         [HttpPost]
